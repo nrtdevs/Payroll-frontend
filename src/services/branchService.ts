@@ -1,4 +1,5 @@
 import { API_URL } from '../config/env'
+import { handleUnauthorizedResponse, SESSION_TIMEOUT_MESSAGE } from './authGuard'
 
 export type BranchPayload = {
   name: string
@@ -101,6 +102,9 @@ export const branchService = {
       headers: authHeaders(false),
     })
 
+    if (handleUnauthorizedResponse(response)) {
+      throw new Error(SESSION_TIMEOUT_MESSAGE)
+    }
     if (!response.ok) {
       throw new Error(await parseErrorMessage(response))
     }
@@ -115,6 +119,9 @@ export const branchService = {
       headers: authHeaders(false),
     })
 
+    if (handleUnauthorizedResponse(response)) {
+      throw new Error(SESSION_TIMEOUT_MESSAGE)
+    }
     if (!response.ok) {
       throw new Error(await parseErrorMessage(response))
     }
@@ -142,6 +149,9 @@ export const branchService = {
       headers: authHeaders(false),
     })
 
+    if (handleUnauthorizedResponse(response)) {
+      throw new Error(SESSION_TIMEOUT_MESSAGE)
+    }
     if (!response.ok) {
       throw new Error(await parseErrorMessage(response))
     }
@@ -170,6 +180,9 @@ export const branchService = {
       body: JSON.stringify(payload),
     })
 
+    if (handleUnauthorizedResponse(response)) {
+      throw new Error(SESSION_TIMEOUT_MESSAGE)
+    }
     if (!response.ok) {
       throw new Error(await parseErrorMessage(response))
     }
@@ -185,6 +198,9 @@ export const branchService = {
       body: JSON.stringify(payload),
     })
 
+    if (handleUnauthorizedResponse(response)) {
+      throw new Error(SESSION_TIMEOUT_MESSAGE)
+    }
     if (!response.ok) {
       throw new Error(await parseErrorMessage(response))
     }
@@ -199,6 +215,9 @@ export const branchService = {
       headers: authHeaders(false),
     })
 
+    if (handleUnauthorizedResponse(response)) {
+      throw new Error(SESSION_TIMEOUT_MESSAGE)
+    }
     if (!response.ok) {
       throw new Error(await parseErrorMessage(response))
     }

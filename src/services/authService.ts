@@ -1,4 +1,5 @@
 import { API_URL } from '../config/env'
+import { handleUnauthorizedResponse, SESSION_TIMEOUT_MESSAGE } from './authGuard'
 
 type LoginPayload = {
   username: string
@@ -92,6 +93,9 @@ export const authService = {
       })
     }
 
+    if (handleUnauthorizedResponse(response)) {
+      throw new Error(SESSION_TIMEOUT_MESSAGE)
+    }
     if (!response.ok) {
       throw new Error(await parseErrorMessage(response))
     }

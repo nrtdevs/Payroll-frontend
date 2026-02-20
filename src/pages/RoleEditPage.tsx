@@ -39,6 +39,7 @@ function RoleEditPage() {
       return acc
     }, {})
   }, [permissions])
+  const allPermissionIds = useMemo(() => permissions.map((permission) => permission.id), [permissions])
   const totalGroups = Object.keys(groupedPermissions).length
 
   useEffect(() => {
@@ -76,6 +77,24 @@ function RoleEditPage() {
     setSelectedPermissionIds((prev) =>
       prev.includes(permissionId) ? prev.filter((id) => id !== permissionId) : [...prev, permissionId],
     )
+  }
+
+  const onToggleAllPermissions = () => {
+    setSelectedPermissionIds((prev) => {
+      const allSelected = allPermissionIds.length > 0 && allPermissionIds.every((permissionId) => prev.includes(permissionId))
+      return allSelected ? [] : [...allPermissionIds]
+    })
+  }
+
+  const onToggleGroupPermissions = (groupPermissions: Permission[]) => {
+    setSelectedPermissionIds((prev) => {
+      const groupPermissionIds = groupPermissions.map((permission) => permission.id)
+      const allGroupSelected = groupPermissionIds.every((permissionId) => prev.includes(permissionId))
+      if (allGroupSelected) {
+        return prev.filter((permissionId) => !groupPermissionIds.includes(permissionId))
+      }
+      return Array.from(new Set([...prev, ...groupPermissionIds]))
+    })
   }
 
   const onSubmitPermissions = async () => {
@@ -149,51 +168,91 @@ function RoleEditPage() {
                 No permissions found.
               </Typography>
             ) : (
-              Object.entries(groupedPermissions)
-                .sort(([leftGroup], [rightGroup]) => leftGroup.localeCompare(rightGroup))
-                .map(([groupName, groupPermissions], index) => (
-                  <div
-                    key={groupName}
-                    className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 shadow-sm"
-                    style={{
-                      borderLeftWidth: '4px',
-                      borderLeftColor: ['#0284c7', '#16a34a', '#9333ea', '#ea580c'][index % 4],
-                    }}
-                  >
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" className="!mb-2">
-                      <Typography variant="subtitle2" className="!font-semibold !text-slate-800">
-                        {prettifyToken(groupName)}
-                      </Typography>
-                      <Chip size="small" label={`${groupPermissions.length} items`} />
-                    </Stack>
-                    <FormGroup>
-                      {groupPermissions
-                        .slice()
-                        .sort((leftPermission, rightPermission) =>
-                          leftPermission.permission_name.localeCompare(rightPermission.permission_name),
-                        )
-                        .map((permission) => (
+              <>
+                <Stack
+                  direction={{ xs: 'column', md: 'row' }}
+                  justifyContent="space-between"
+                  alignItems={{ xs: 'flex-start', md: 'center' }}
+                  className="rounded-md border border-slate-200 bg-white px-3 py-2"
+                >
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={allPermissionIds.length > 0 && allPermissionIds.every((permissionId) => selectedPermissionIds.includes(permissionId))}
+                        indeterminate={
+                          selectedPermissionIds.length > 0 &&
+                          !allPermissionIds.every((permissionId) => selectedPermissionIds.includes(permissionId))
+                        }
+                        onChange={onToggleAllPermissions}
+                      />
+                    }
+                    label={<span className="font-medium text-slate-800">Select All Permissions</span>}
+                  />
+                  <Typography variant="body2" className="!text-slate-600">
+                    Selected: {selectedPermissionIds.length}
+                  </Typography>
+                </Stack>
+
+                {Object.entries(groupedPermissions)
+                  .sort(([leftGroup], [rightGroup]) => leftGroup.localeCompare(rightGroup))
+                  .map(([groupName, groupPermissions], index) => {
+                    const groupPermissionIds = groupPermissions.map((permission) => permission.id)
+                    const allGroupSelected = groupPermissionIds.length > 0 && groupPermissionIds.every((permissionId) => selectedPermissionIds.includes(permissionId))
+                    const someGroupSelected =
+                      !allGroupSelected && groupPermissionIds.some((permissionId) => selectedPermissionIds.includes(permissionId))
+
+                    return (
+                      <div
+                        key={groupName}
+                        className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 shadow-sm"
+                        style={{
+                          borderLeftWidth: '4px',
+                          borderLeftColor: ['#0284c7', '#16a34a', '#9333ea', '#ea580c'][index % 4],
+                        }}
+                      >
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" className="!mb-2">
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography variant="subtitle2" className="!font-semibold !text-slate-800">
+                              {prettifyToken(groupName)}
+                            </Typography>
+                            <Chip size="small" label={`${groupPermissions.length} items`} />
+                          </Stack>
                           <FormControlLabel
-                            key={permission.id}
-                            control={
-                              <Checkbox
-                                checked={selectedPermissionIds.includes(permission.id)}
-                                onChange={() => onTogglePermission(permission.id)}
-                              />
-                            }
-                              label={
-                                <span>
-                                  {prettifyToken(permission.permission_name)}
-                                  {permission.description ? (
-                                    <span className="ml-2 text-xs text-slate-500">({permission.description})</span>
-                                  ) : null}
-                                </span>
-                              }
+                            className="!mr-0"
+                            control={<Checkbox checked={allGroupSelected} indeterminate={someGroupSelected} onChange={() => onToggleGroupPermissions(groupPermissions)} />}
+                            label={<span className="text-sm font-medium text-slate-700">Select All</span>}
                           />
-                        ))}
-                    </FormGroup>
-                  </div>
-                ))
+                        </Stack>
+                        <FormGroup>
+                          {groupPermissions
+                            .slice()
+                            .sort((leftPermission, rightPermission) =>
+                              leftPermission.permission_name.localeCompare(rightPermission.permission_name),
+                            )
+                            .map((permission) => (
+                              <FormControlLabel
+                                key={permission.id}
+                                control={
+                                  <Checkbox
+                                    checked={selectedPermissionIds.includes(permission.id)}
+                                    onChange={() => onTogglePermission(permission.id)}
+                                  />
+                                }
+                                label={
+                                  <span>
+                                    {prettifyToken(permission.permission_name)}
+                                    {permission.description ? (
+                                      <span className="ml-2 text-xs text-slate-500">({permission.description})</span>
+                                    ) : null}
+                                  </span>
+                                }
+                              />
+                            ))}
+                        </FormGroup>
+                      </div>
+                    )
+                  })}
+              </>
             )}
           </Box>
 
