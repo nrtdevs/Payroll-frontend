@@ -7,6 +7,8 @@ export const handleUnauthorizedResponse = (response: Response): boolean => {
 
   localStorage.removeItem('auth_token')
   localStorage.removeItem('auth_user')
+  localStorage.removeItem('auth_user_details')
+  localStorage.removeItem('auth_role_permissions')
   sessionStorage.setItem('auth_toast_message', SESSION_TIMEOUT_MESSAGE)
 
   if (window.location.pathname !== '/login') {

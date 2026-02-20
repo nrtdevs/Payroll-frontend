@@ -33,6 +33,7 @@ import { authService } from '../services/authService'
 import { ColorModeContext } from '../context/colorMode'
 import useToast from '../context/useToast'
 import CustomLoader from '../components/CustomLoader'
+import useAuth from '../context/useAuth'
 
 const menuItems = [
   { label: 'Overview', path: '/dashboard', icon: <DashboardRoundedIcon /> },
@@ -51,6 +52,7 @@ function DashboardLayout() {
   const theme = useTheme()
   const { mode, toggleColorMode } = useContext(ColorModeContext)
   const { showToast } = useToast()
+  const { authState, clearAuthData } = useAuth()
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
 
   const [desktopPinned, setDesktopPinned] = useState(true)
@@ -58,7 +60,10 @@ function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [logoutLoading, setLogoutLoading] = useState(false)
 
-  const userName = useMemo(() => localStorage.getItem('auth_user') || 'User', [])
+  const userName = useMemo(
+    () => authState.user?.name || authState.user?.username || authState.user?.email || localStorage.getItem('auth_user') || 'User',
+    [authState.user],
+  )
   const sidebarExpanded = isDesktop ? desktopPinned || desktopHovered : true
   const sidebarWidth = isDesktop ? (sidebarExpanded ? expandedWidth : collapsedWidth) : expandedWidth
 
@@ -77,8 +82,7 @@ function DashboardLayout() {
     } catch {
       showToast('Logout successful.', 'success')
     } finally {
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('auth_user')
+      clearAuthData()
       setLogoutLoading(false)
       navigate('/login', { replace: true })
     }

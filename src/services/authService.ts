@@ -1,5 +1,6 @@
 import { API_URL } from '../config/env'
 import { handleUnauthorizedResponse, SESSION_TIMEOUT_MESSAGE } from './authGuard'
+import type { AuthUser } from '../context/authTypes'
 
 type LoginPayload = {
   username: string
@@ -9,16 +10,13 @@ type LoginPayload = {
 type LoginResult = {
   token: string
   userName: string
+  user: AuthUser | null
 }
 
 type MaybeLoginResponse = {
   access_token?: string
   token?: string
-  user?: {
-    username?: string
-    name?: string
-    email?: string
-  }
+  user?: AuthUser
   username?: string
   name?: string
 }
@@ -65,7 +63,7 @@ export const authService = {
       data.name ??
       payload.username
 
-    return { token, userName }
+    return { token, userName, user: data.user ?? null }
   },
 
   async logout(): Promise<string> {

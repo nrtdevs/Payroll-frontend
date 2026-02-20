@@ -6,6 +6,7 @@ import './index.css'
 import App from './App.tsx'
 import { ColorModeContext, type ColorMode } from './context/colorMode'
 import { ToastProvider } from './context/toast'
+import AuthProvider from './context/authProvider'
 
 const getInitialMode = (): ColorMode => {
   const savedMode = localStorage.getItem('color_mode')
@@ -58,14 +59,16 @@ function Root() {
 
   return (
     <ColorModeContext.Provider value={colorModeValue}>
-      <ToastProvider>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </ThemeProvider>
-      </ToastProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </ThemeProvider>
+        </ToastProvider>
+      </AuthProvider>
     </ColorModeContext.Provider>
   )
 }

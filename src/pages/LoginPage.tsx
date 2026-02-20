@@ -6,10 +6,13 @@ import { authService } from '../services/authService'
 import CustomInput from '../components/CustomInput'
 import CustomLoader from '../components/CustomLoader'
 import useToast from '../context/useToast'
+import useAuth from '../context/useAuth'
+import { roleService } from '../services/roleService'
 
 function LoginPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { setAuthData } = useAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -28,8 +31,13 @@ function LoginPage() {
     setLoading(true)
     try {
       const result = await authService.login({ username, password })
-      localStorage.setItem('auth_token', result.token)
-      localStorage.setItem('auth_user', result.userName)
+      let rolePermissions = null
+      const roleId = result.user?.role_id
+      if (typeof roleId === 'number' && Number.isFinite(roleId)) {
+        localStorage.setItem('auth_token', result.token)
+        rolePermissions = await roleService.getRolePermissionsData(roleId)
+      }
+      setAuthData(result.token, result.user, rolePermissions)
       showToast('Login successful.', 'success')
       navigate('/dashboard', { replace: true })
     } catch (err) {

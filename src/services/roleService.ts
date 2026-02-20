@@ -1,5 +1,6 @@
 import { API_URL } from '../config/env'
 import { handleUnauthorizedResponse, SESSION_TIMEOUT_MESSAGE } from './authGuard'
+import type { RolePermissionsData } from '../context/authTypes'
 
 export type Role = {
   id: number
@@ -255,6 +256,54 @@ export const roleService = {
     }
     if (!response.ok) {
       throw new Error(await parseErrorMessage(response))
+    }
+  },
+
+  async getRolePermissionsData(roleId: number): Promise<RolePermissionsData> {
+    const response = await fetch(`${API_URL}/roles/${roleId}/permissions`, {
+      method: 'GET',
+      headers: authHeaders(false),
+    })
+
+    if (handleUnauthorizedResponse(response)) {
+      throw new Error(SESSION_TIMEOUT_MESSAGE)
+    }
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response))
+    }
+
+    const raw = (await response.json()) as unknown
+    const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+    const permissionsRaw = Array.isArray(obj.permissions) ? obj.permissions : []
+    const permissions = permissionsRaw
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null
+        const permissionObj = item as Record<string, unknown>
+        const rawId = permissionObj.id
+        const id = typeof rawId === 'number' ? rawId : typeof rawId === 'string' ? Number(rawId) : NaN
+        if (!Number.isFinite(id)) return null
+        return {
+          id,
+          name: typeof permissionObj.name === 'string' ? permissionObj.name : '',
+          group: typeof permissionObj.group === 'string' ? permissionObj.group : '',
+        }
+      })
+      .filter((item): item is { id: number; name: string; group: string } => item !== null)
+
+    const rawRoleId = typeof obj.roleId === 'number' ? obj.roleId : Number(obj.roleId)
+    const rawPage = typeof obj.page === 'number' ? obj.page : Number(obj.page)
+    const rawSize = typeof obj.size === 'number' ? obj.size : Number(obj.size)
+    const rawTotal = typeof obj.total === 'number' ? obj.total : Number(obj.total)
+    const rawTotalPages = typeof obj.totalPages === 'number' ? obj.totalPages : Number(obj.totalPages)
+
+    return {
+      roleId: Number.isFinite(rawRoleId) ? rawRoleId : roleId,
+      roleName: typeof obj.roleName === 'string' ? obj.roleName : '',
+      permissions,
+      page: Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1,
+      size: Number.isFinite(rawSize) && rawSize > 0 ? rawSize : permissions.length,
+      total: Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : permissions.length,
+      totalPages: Number.isFinite(rawTotalPages) && rawTotalPages >= 0 ? rawTotalPages : 0,
     }
   },
 }
