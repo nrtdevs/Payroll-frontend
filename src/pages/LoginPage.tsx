@@ -1,24 +1,26 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Alert, Box, Button, CircularProgress, Paper, Snackbar, Typography } from '@mui/material'
+import { Alert, Box, Button, Paper, Typography } from '@mui/material'
 import { authService } from '../services/authService'
 import CustomInput from '../components/CustomInput'
+import CustomLoader from '../components/CustomLoader'
+import useToast from '../context/useToast'
 
 function LoginPage() {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [toastMessage, setToastMessage] = useState('')
 
   useEffect(() => {
     const message = sessionStorage.getItem('auth_toast_message')
     if (!message) return
-    setToastMessage(message)
+    showToast(message, 'success')
     sessionStorage.removeItem('auth_toast_message')
-  }, [])
+  }, [showToast])
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -28,10 +30,12 @@ function LoginPage() {
       const result = await authService.login({ username, password })
       localStorage.setItem('auth_token', result.token)
       localStorage.setItem('auth_user', result.userName)
+      showToast('Login successful.', 'success')
       navigate('/dashboard', { replace: true })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed.'
       setError(message)
+      showToast(message, 'error')
     } finally {
       setLoading(false)
     }
@@ -76,21 +80,10 @@ function LoginPage() {
             fullWidth
           />
           <Button type="submit" variant="contained" size="large" disabled={loading} className="!mt-2 !rounded-xl !py-3">
-            {loading ? <CircularProgress size={22} color="inherit" /> : 'Sign In'}
+            {loading ? <CustomLoader size={20} color="inherit" /> : 'Sign In'}
           </Button>
         </Box>
       </Paper>
-
-      <Snackbar
-        open={Boolean(toastMessage)}
-        autoHideDuration={2600}
-        onClose={() => setToastMessage('')}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert severity="success" onClose={() => setToastMessage('')} variant="filled">
-          {toastMessage}
-        </Alert>
-      </Snackbar>
     </Box>
   )
 }

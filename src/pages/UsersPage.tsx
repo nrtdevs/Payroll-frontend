@@ -29,6 +29,8 @@ import type { CreateUserPayload, User, UserListFilters, UserPayload } from '../s
 import CustomAutocomplete, { type CustomAutocompleteOption } from '../components/CustomAutocomplete'
 import CustomInput from '../components/CustomInput'
 import CustomTable, { type CustomTableColumn } from '../components/CustomTable'
+import CustomLoader from '../components/CustomLoader'
+import useToast from '../context/useToast'
 
 const emptyUserForm: CreateUserPayload = {
   name: '',
@@ -59,6 +61,7 @@ const toNullableNumber = (value: string): number | null => {
 }
 
 function UsersPage() {
+  const { showToast } = useToast()
   const [users, setUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [userError, setUserError] = useState('')
@@ -66,6 +69,7 @@ function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [branches, setBranches] = useState<Branch[]>([])
   const [roles, setRoles] = useState<Role[]>([])
+  const [loadingFormOptions, setLoadingFormOptions] = useState(false)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -116,6 +120,7 @@ function UsersPage() {
   }
 
   const loadFormOptions = async () => {
+    setLoadingFormOptions(true)
     try {
       const [branchData, roleData] = await Promise.all([branchService.getBranches(), roleService.getRoles()])
       setBranches(branchData)
@@ -123,6 +128,8 @@ function UsersPage() {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load branch/role options.'
       setUserError(message)
+    } finally {
+      setLoadingFormOptions(false)
     }
   }
 
@@ -152,10 +159,12 @@ function UsersPage() {
     try {
       await userService.createUser(userForm)
       closeCreateModal()
+      showToast('User created successfully.', 'success')
       await loadUsers()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create user.'
       setUserError(message)
+      showToast(message, 'error')
     } finally {
       setSubmittingUser(false)
     }
@@ -188,10 +197,12 @@ function UsersPage() {
       }
       await userService.updateUser(editingUserId, updatePayload)
       closeEditModal()
+      showToast('User updated successfully.', 'success')
       await loadUsers()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update user.'
       setUserError(message)
+      showToast(message, 'error')
     } finally {
       setSubmittingUser(false)
     }
@@ -234,9 +245,11 @@ function UsersPage() {
         setViewOpen(false)
       }
       await loadUsers()
+      showToast('User deleted successfully.', 'success')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete user.'
       setUserError(message)
+      showToast(message, 'error')
     }
   }
 
@@ -266,6 +279,7 @@ function UsersPage() {
         requiredMessage="Branch is required."
         options={branchOptions}
         value={userForm.branch_id}
+        disabled={loadingFormOptions}
         onChange={(nextValue) => setUserForm((p) => ({ ...p, branch_id: nextValue }))}
       />
       <CustomAutocomplete
@@ -274,6 +288,7 @@ function UsersPage() {
         requiredMessage="Role is required."
         options={roleOptions}
         value={userForm.role_id}
+        disabled={loadingFormOptions}
         onChange={(nextValue) => setUserForm((p) => ({ ...p, role_id: nextValue }))}
       />
       <CustomAutocomplete
@@ -352,6 +367,10 @@ function UsersPage() {
     </div>
   )
 
+  if (loadingUsers && users.length === 0) {
+    return <CustomLoader fullscreen label="Loading users..." />
+  }
+
   return (
     <div className="space-y-4">
       <Card className="!rounded-2xl">
@@ -365,7 +384,7 @@ function UsersPage() {
                 Create User
               </Button>
               <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void loadUsers()} disabled={loadingUsers}>
-                Refresh
+                {loadingUsers ? <CustomLoader size={16} color="inherit" /> : 'Refresh'}
               </Button>
             </Stack>
           </Stack>
@@ -417,7 +436,8 @@ function UsersPage() {
               setRowsPerPage(nextRowsPerPage)
               setPage(1)
             }}
-            emptyMessage={loadingUsers ? 'Loading users...' : 'No users found.'}
+            emptyMessage="No users found."
+            loading={loadingUsers}
             totalRows={totalUsers}
             paginateRows={false}
             renderRow={(user) => (
@@ -460,13 +480,14 @@ function UsersPage() {
         <DialogTitle>Create User</DialogTitle>
         <DialogContent>
           <Box component="form" onSubmit={onCreateSubmit} className="space-y-4 pt-1">
+            {loadingFormOptions ? <CustomLoader label="Loading branches and roles..." /> : null}
             {userFormFields(true)}
             <Stack direction="row" justifyContent="flex-end" spacing={1}>
               <Button variant="outlined" onClick={closeCreateModal}>
                 Cancel
               </Button>
               <Button type="submit" variant="contained" disabled={submittingUser}>
-                {submittingUser ? 'Saving...' : 'Create'}
+                {submittingUser ? <CustomLoader size={18} color="inherit" /> : 'Create'}
               </Button>
             </Stack>
           </Box>
@@ -477,13 +498,14 @@ function UsersPage() {
         <DialogTitle>Update User #{editingUserId}</DialogTitle>
         <DialogContent>
           <Box component="form" onSubmit={onEditSubmit} className="space-y-4 pt-1">
+            {loadingFormOptions ? <CustomLoader label="Loading branches and roles..." /> : null}
             {userFormFields(false)}
             <Stack direction="row" justifyContent="flex-end" spacing={1}>
               <Button variant="outlined" onClick={closeEditModal}>
                 Cancel
               </Button>
               <Button type="submit" variant="contained" disabled={submittingUser}>
-                {submittingUser ? 'Saving...' : 'Update'}
+                {submittingUser ? <CustomLoader size={18} color="inherit" /> : 'Update'}
               </Button>
             </Stack>
           </Box>

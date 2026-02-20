@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel } from '@mui/material'
 import CustomPaginationBar from './CustomPaginationBar'
+import CustomLoader from './CustomLoader'
 
 export type CustomTableColumn = {
   key: string
@@ -23,6 +24,7 @@ type CustomTableProps<T> = {
   emptyMessage: string
   paginateRows?: boolean
   totalRows?: number
+  loading?: boolean
 }
 
 function CustomTable<T>({
@@ -37,6 +39,7 @@ function CustomTable<T>({
   emptyMessage,
   paginateRows = true,
   totalRows,
+  loading = false,
 }: CustomTableProps<T>) {
   const firstSortableColumnKey = useMemo(
     () => columns.find((column) => (column.sortable ?? column.key !== 'action'))?.key ?? null,
@@ -156,7 +159,13 @@ function CustomTable<T>({
             </TableRow>
           </TableHead>
           <TableBody>
-            {visibleRows.length === 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} sx={{ py: 3 }}>
+                  <CustomLoader label="Loading data..." center />
+                </TableCell>
+              </TableRow>
+            ) : visibleRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} sx={{ py: 3, color: 'text.secondary' }}>
                   {emptyMessage}

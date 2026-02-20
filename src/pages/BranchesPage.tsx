@@ -24,6 +24,8 @@ import { branchService } from '../services/branchService'
 import type { Branch, BranchListFilters, BranchPayload } from '../services/branchService'
 import CustomInput from '../components/CustomInput'
 import CustomTable, { type CustomTableColumn } from '../components/CustomTable'
+import CustomLoader from '../components/CustomLoader'
+import useToast from '../context/useToast'
 
 const emptyBranchForm: BranchPayload = {
   name: '',
@@ -34,10 +36,12 @@ const emptyBranchForm: BranchPayload = {
 }
 
 function BranchesPage() {
+  const { showToast } = useToast()
   const [branches, setBranches] = useState<Branch[]>([])
   const [loadingBranches, setLoadingBranches] = useState(false)
   const [branchError, setBranchError] = useState('')
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null)
+  const [loadingBranchDetail, setLoadingBranchDetail] = useState(false)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -98,10 +102,12 @@ function BranchesPage() {
     try {
       await branchService.createBranch(branchForm)
       closeCreateModal()
+      showToast('Branch created successfully.', 'success')
       await loadBranches()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create branch.'
       setBranchError(message)
+      showToast(message, 'error')
     } finally {
       setSubmittingBranch(false)
     }
@@ -115,10 +121,12 @@ function BranchesPage() {
     try {
       await branchService.updateBranch(editingBranchId, branchForm)
       closeEditModal()
+      showToast('Branch updated successfully.', 'success')
       await loadBranches()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update branch.'
       setBranchError(message)
+      showToast(message, 'error')
     } finally {
       setSubmittingBranch(false)
     }
@@ -146,21 +154,27 @@ function BranchesPage() {
         setSelectedBranch(null)
       }
       await loadBranches()
+      showToast('Branch deleted successfully.', 'success')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete branch.'
       setBranchError(message)
+      showToast(message, 'error')
     }
   }
 
   const onViewBranch = async (id: number) => {
     setBranchError('')
+    setViewOpen(true)
+    setLoadingBranchDetail(true)
+    setSelectedBranch(null)
     try {
       const branch = await branchService.getBranchById(id)
       setSelectedBranch(branch)
-      setViewOpen(true)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch branch.'
       setBranchError(message)
+    } finally {
+      setLoadingBranchDetail(false)
     }
   }
 
@@ -182,6 +196,10 @@ function BranchesPage() {
     setPage(1)
   }
 
+  if (loadingBranches && branches.length === 0) {
+    return <CustomLoader fullscreen label="Loading branches..." />
+  }
+
   return (
     <div className="space-y-4">
       <Card className="!rounded-2xl">
@@ -195,7 +213,7 @@ function BranchesPage() {
                 Create Branch
               </Button>
               <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void loadBranches()} disabled={loadingBranches}>
-                Refresh
+                {loadingBranches ? <CustomLoader size={16} color="inherit" /> : 'Refresh'}
               </Button>
             </Stack>
           </Stack>
@@ -252,7 +270,8 @@ function BranchesPage() {
               setRowsPerPage(nextRowsPerPage)
               setPage(1)
             }}
-            emptyMessage={loadingBranches ? 'Loading branches...' : 'No branches found.'}
+            emptyMessage="No branches found."
+            loading={loadingBranches}
             totalRows={totalBranches}
             paginateRows={false}
             renderRow={(branch) => (
@@ -310,7 +329,7 @@ function BranchesPage() {
                 Cancel
               </Button>
               <Button type="submit" variant="contained" disabled={submittingBranch}>
-                {submittingBranch ? 'Saving...' : 'Create'}
+                {submittingBranch ? <CustomLoader size={18} color="inherit" /> : 'Create'}
               </Button>
             </Stack>
           </Box>
@@ -341,7 +360,7 @@ function BranchesPage() {
                 Cancel
               </Button>
               <Button type="submit" variant="contained" disabled={submittingBranch}>
-                {submittingBranch ? 'Saving...' : 'Update'}
+                {submittingBranch ? <CustomLoader size={18} color="inherit" /> : 'Update'}
               </Button>
             </Stack>
           </Box>
@@ -351,9 +370,13 @@ function BranchesPage() {
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Branch Detail</DialogTitle>
         <DialogContent>
-          <pre className="m-0 overflow-x-auto rounded-xl bg-slate-900 p-4 text-sm text-slate-100">
-            {JSON.stringify(selectedBranch, null, 2)}
-          </pre>
+          {loadingBranchDetail ? (
+            <CustomLoader label="Loading branch detail..." />
+          ) : (
+            <pre className="m-0 overflow-x-auto rounded-xl bg-slate-900 p-4 text-sm text-slate-100">
+              {JSON.stringify(selectedBranch, null, 2)}
+            </pre>
+          )}
         </DialogContent>
       </Dialog>
     </div>

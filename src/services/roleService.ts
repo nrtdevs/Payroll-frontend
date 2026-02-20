@@ -22,6 +22,10 @@ export type RolePaginatedResponse = {
   total_pages: number
 }
 
+export type RolePermissionAssignmentPayload = {
+  permissionIds: number[]
+}
+
 const getAuthToken = (): string => {
   const token = localStorage.getItem('auth_token')
   if (!token) {
@@ -134,10 +138,97 @@ export const roleService = {
     }
   },
 
+  async getRoleById(id: number): Promise<Role> {
+    const response = await fetch(`${API_URL}/roles/${id}`, {
+      method: 'GET',
+      headers: authHeaders(false),
+    })
+
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response))
+    }
+
+    const data = (await response.json()) as unknown
+    const role = normalizeRole(data)
+    if (!role) {
+      throw new Error('Invalid role response.')
+    }
+
+    return role
+  },
+
   async deleteRole(id: number): Promise<void> {
     const response = await fetch(`${API_URL}/roles/${id}`, {
       method: 'DELETE',
       headers: authHeaders(false),
+    })
+
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response))
+    }
+  },
+
+  async getRolePermissions(roleId: number): Promise<number[]> {
+    const response = await fetch(`${API_URL}/roles/${roleId}/permissions`, {
+      method: 'GET',
+      headers: authHeaders(false),
+    })
+
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response))
+    }
+
+    const raw = (await response.json()) as unknown
+    if (Array.isArray(raw)) {
+      return raw
+        .map((item) => {
+          if (typeof item === 'number') return item
+          if (typeof item === 'string') return Number(item)
+          if (item && typeof item === 'object') {
+            const obj = item as Record<string, unknown>
+            if (typeof obj.permission_id === 'number') return obj.permission_id
+            if (typeof obj.id === 'number') return obj.id
+          }
+          return NaN
+        })
+        .filter((id) => Number.isFinite(id))
+    }
+
+    if (raw && typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>
+      const candidates = Array.isArray(obj.permissionIds)
+        ? obj.permissionIds
+        : Array.isArray(obj.permission_ids)
+          ? obj.permission_ids
+          : Array.isArray(obj.permissions)
+            ? obj.permissions
+            : Array.isArray(obj.items)
+              ? obj.items
+              : []
+      return candidates
+        .map((item) => {
+          if (typeof item === 'number') return item
+          if (typeof item === 'string') return Number(item)
+          if (item && typeof item === 'object') {
+            const candidate = item as Record<string, unknown>
+            if (typeof candidate.permissionId === 'number') return candidate.permissionId
+            if (typeof candidate.permission_id === 'number') return candidate.permission_id
+            if (typeof candidate.id === 'number') return candidate.id
+            if (typeof candidate.id === 'string') return Number(candidate.id)
+          }
+          return NaN
+        })
+        .filter((id) => Number.isFinite(id))
+    }
+
+    return []
+  },
+
+  async updateRolePermissions(roleId: number, payload: RolePermissionAssignmentPayload): Promise<void> {
+    const response = await fetch(`${API_URL}/roles/${roleId}/permissions`, {
+      method: 'POST',
+      headers: authHeaders(true),
+      body: JSON.stringify(payload),
     })
 
     if (!response.ok) {

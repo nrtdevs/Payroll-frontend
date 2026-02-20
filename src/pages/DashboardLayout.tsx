@@ -31,6 +31,8 @@ import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import { authService } from '../services/authService'
 import { ColorModeContext } from '../context/colorMode'
+import useToast from '../context/useToast'
+import CustomLoader from '../components/CustomLoader'
 
 const menuItems = [
   { label: 'Overview', path: '/dashboard', icon: <DashboardRoundedIcon /> },
@@ -48,6 +50,7 @@ function DashboardLayout() {
   const location = useLocation()
   const theme = useTheme()
   const { mode, toggleColorMode } = useContext(ColorModeContext)
+  const { showToast } = useToast()
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
 
   const [desktopPinned, setDesktopPinned] = useState(true)
@@ -60,6 +63,9 @@ function DashboardLayout() {
   const sidebarWidth = isDesktop ? (sidebarExpanded ? expandedWidth : collapsedWidth) : expandedWidth
 
   const pageTitle =
+    (location.pathname.startsWith('/role-edit/') || location.pathname.startsWith('/dashboard/role-edit/')
+      ? 'Role Permissions'
+      : undefined) ??
     menuItems.find((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))?.label ??
     'Dashboard'
 
@@ -67,9 +73,9 @@ function DashboardLayout() {
     setLogoutLoading(true)
     try {
       const detail = await authService.logout()
-      sessionStorage.setItem('auth_toast_message', detail)
+      showToast(detail, 'success')
     } catch {
-      sessionStorage.setItem('auth_toast_message', 'Logout successful.')
+      showToast('Logout successful.', 'success')
     } finally {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_user')
@@ -195,7 +201,7 @@ function DashboardLayout() {
                 onClick={() => void onLogout()}
                 className="!rounded-lg"
               >
-                {logoutLoading ? 'Logging out...' : 'Logout'}
+                {logoutLoading ? <CustomLoader size={16} color="inherit" /> : 'Logout'}
               </Button>
             </Box>
           </Toolbar>

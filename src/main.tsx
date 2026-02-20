@@ -5,6 +5,7 @@ import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import './index.css'
 import App from './App.tsx'
 import { ColorModeContext, type ColorMode } from './context/colorMode'
+import { ToastProvider } from './context/toast'
 
 const getInitialMode = (): ColorMode => {
   const savedMode = localStorage.getItem('color_mode')
@@ -57,12 +58,14 @@ function Root() {
 
   return (
     <ColorModeContext.Provider value={colorModeValue}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </ThemeProvider>
+      <ToastProvider>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </ThemeProvider>
+      </ToastProvider>
     </ColorModeContext.Provider>
   )
 }

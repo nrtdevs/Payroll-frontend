@@ -23,6 +23,8 @@ import { permissionService } from '../services/permissionService'
 import type { Permission, PermissionListFilters, PermissionPayload } from '../services/permissionService'
 import CustomInput from '../components/CustomInput'
 import CustomTable, { type CustomTableColumn } from '../components/CustomTable'
+import CustomLoader from '../components/CustomLoader'
+import useToast from '../context/useToast'
 
 const emptyPermissionForm: PermissionPayload = {
   permission_name: '',
@@ -40,6 +42,7 @@ const normalizeTokenValue = (value: string): string => {
 }
 
 function PermissionsPage() {
+  const { showToast } = useToast()
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [loadingPermissions, setLoadingPermissions] = useState(false)
   const [permissionError, setPermissionError] = useState('')
@@ -105,10 +108,12 @@ function PermissionsPage() {
         description: permissionForm.description.trim(),
       })
       closeCreateModal()
+      showToast('Permission created successfully.', 'success')
       await loadPermissions()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create permission.'
       setPermissionError(message)
+      showToast(message, 'error')
     } finally {
       setSubmittingPermission(false)
     }
@@ -126,10 +131,12 @@ function PermissionsPage() {
         description: permissionForm.description.trim(),
       })
       closeEditModal()
+      showToast('Permission updated successfully.', 'success')
       await loadPermissions()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update permission.'
       setPermissionError(message)
+      showToast(message, 'error')
     } finally {
       setSubmittingPermission(false)
     }
@@ -151,10 +158,12 @@ function PermissionsPage() {
     setPermissionError('')
     try {
       await permissionService.deletePermission(permission.id)
+      showToast('Permission deleted successfully.', 'success')
       await loadPermissions()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete permission.'
       setPermissionError(message)
+      showToast(message, 'error')
     }
   }
 
@@ -198,6 +207,10 @@ function PermissionsPage() {
     </div>
   )
 
+  if (loadingPermissions && permissions.length === 0) {
+    return <CustomLoader fullscreen label="Loading permissions..." />
+  }
+
   return (
     <div className="space-y-4">
       <Card className="!rounded-2xl">
@@ -216,7 +229,7 @@ function PermissionsPage() {
                 onClick={() => void loadPermissions()}
                 disabled={loadingPermissions}
               >
-                Refresh
+                {loadingPermissions ? <CustomLoader size={16} color="inherit" /> : 'Refresh'}
               </Button>
             </Stack>
           </Stack>
@@ -261,7 +274,8 @@ function PermissionsPage() {
               setRowsPerPage(nextRowsPerPage)
               setPage(1)
             }}
-            emptyMessage={loadingPermissions ? 'Loading permissions...' : 'No permissions found.'}
+            emptyMessage="No permissions found."
+            loading={loadingPermissions}
             totalRows={totalPermissions}
             paginateRows={false}
             renderRow={(permission) => (
@@ -299,7 +313,7 @@ function PermissionsPage() {
                 Cancel
               </Button>
               <Button type="submit" variant="contained" disabled={submittingPermission}>
-                {submittingPermission ? 'Saving...' : 'Create'}
+                {submittingPermission ? <CustomLoader size={18} color="inherit" /> : 'Create'}
               </Button>
             </Stack>
           </Box>
@@ -316,7 +330,7 @@ function PermissionsPage() {
                 Cancel
               </Button>
               <Button type="submit" variant="contained" disabled={submittingPermission}>
-                {submittingPermission ? 'Saving...' : 'Update'}
+                {submittingPermission ? <CustomLoader size={18} color="inherit" /> : 'Update'}
               </Button>
             </Stack>
           </Box>

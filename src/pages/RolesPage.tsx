@@ -17,14 +17,20 @@ import {
 } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
+import { useNavigate } from 'react-router-dom'
 import { roleService } from '../services/roleService'
 import type { Role, RoleListFilters } from '../services/roleService'
 import CustomInput from '../components/CustomInput'
 import CustomTable, { type CustomTableColumn } from '../components/CustomTable'
+import CustomLoader from '../components/CustomLoader'
+import useToast from '../context/useToast'
 
 function RolesPage() {
+  const navigate = useNavigate()
+  const { showToast } = useToast()
   const [roles, setRoles] = useState<Role[]>([])
   const [loadingRoles, setLoadingRoles] = useState(false)
   const [roleError, setRoleError] = useState('')
@@ -74,10 +80,12 @@ function RolesPage() {
       await roleService.createRole({ name: roleName.trim() })
       setCreateOpen(false)
       setRoleName('')
+      showToast('Role created successfully.', 'success')
       await loadRoles()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create role.'
       setRoleError(message)
+      showToast(message, 'error')
     } finally {
       setSubmittingRole(false)
     }
@@ -89,10 +97,12 @@ function RolesPage() {
     setRoleError('')
     try {
       await roleService.deleteRole(role.id)
+      showToast('Role deleted successfully.', 'success')
       await loadRoles()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete role.'
       setRoleError(message)
+      showToast(message, 'error')
     }
   }
 
@@ -108,6 +118,10 @@ function RolesPage() {
     setPage(1)
   }
 
+  if (loadingRoles && roles.length === 0) {
+    return <CustomLoader fullscreen label="Loading roles..." />
+  }
+
   return (
     <div className="space-y-4">
       <Card className="!rounded-2xl">
@@ -121,7 +135,7 @@ function RolesPage() {
                 Create Role
               </Button>
               <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void loadRoles()} disabled={loadingRoles}>
-                Refresh
+                {loadingRoles ? <CustomLoader size={16} color="inherit" /> : 'Refresh'}
               </Button>
             </Stack>
           </Stack>
@@ -160,7 +174,8 @@ function RolesPage() {
               setRowsPerPage(nextRowsPerPage)
               setPage(1)
             }}
-            emptyMessage={loadingRoles ? 'Loading roles...' : 'No roles found.'}
+            emptyMessage="No roles found."
+            loading={loadingRoles}
             totalRows={totalRoles}
             paginateRows={false}
             renderRow={(role) => (
@@ -169,6 +184,11 @@ function RolesPage() {
                 <TableCell>{role.name}</TableCell>
                 <TableCell>{role.created_at || '-'}</TableCell>
                 <TableCell align="right">
+                  <Tooltip title="Edit Permissions">
+                    <IconButton onClick={() => navigate(`/role-edit/${role.id}`, { state: { roleName: role.name } })}>
+                      <EditRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="View">
                     <IconButton
                       onClick={() => {
@@ -208,7 +228,7 @@ function RolesPage() {
                 Cancel
               </Button>
               <Button type="submit" variant="contained" disabled={submittingRole}>
-                {submittingRole ? 'Saving...' : 'Create'}
+                {submittingRole ? <CustomLoader size={18} color="inherit" /> : 'Create'}
               </Button>
             </Stack>
           </Box>
