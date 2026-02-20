@@ -45,7 +45,7 @@ export type UserPayload = {
   email: string
   father_name: string
   mother_name: string
-  business_id: number | null
+  business_id?: number | null
 }
 
 export type CreateUserPayload = UserPayload & {

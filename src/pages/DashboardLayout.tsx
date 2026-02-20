@@ -1,9 +1,12 @@
-import { useContext, useMemo, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useContext, useEffect, useMemo, useState } from 'react'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   AppBar,
   Avatar,
   Box,
+  Menu,
+  MenuItem,
+  Collapse,
   Divider,
   Drawer,
   IconButton,
@@ -18,29 +21,35 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
-  Button,
 } from '@mui/material'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded'
 import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
+import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded'
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import { authService } from '../services/authService'
 import { ColorModeContext } from '../context/colorMode'
 import useToast from '../context/useToast'
 import CustomLoader from '../components/CustomLoader'
 import useAuth from '../context/useAuth'
 
-const menuItems = [
-  { label: 'Overview', path: '/dashboard', icon: <DashboardRoundedIcon /> },
-  { label: 'Branches', path: '/branch', icon: <AccountTreeRoundedIcon /> },
-  { label: 'Roles', path: '/role', icon: <AdminPanelSettingsRoundedIcon /> },
-  { label: 'Users', path: '/user', icon: <GroupRoundedIcon /> },
-  { label: 'Permissions', path: '/permission', icon: <VpnKeyRoundedIcon /> },
+const primaryMenuItems = [
+  { label: 'Overview', path: '/dashboard', icon: <DashboardRoundedIcon />, permission: null },
+  { label: 'Users', path: '/user', icon: <GroupRoundedIcon />, permission: 'LIST_USER' },
+] as const
+
+const masterMenuChildren = [
+  { label: 'Branches', path: '/branch', icon: <AccountTreeRoundedIcon />, permission: 'LIST_BRANCH' },
+  { label: 'Roles', path: '/role', icon: <AdminPanelSettingsRoundedIcon />, permission: 'LIST_ROLE' },
+  { label: 'Permissions', path: '/permission', icon: <VpnKeyRoundedIcon />, permission: 'LIST_PERMISSION' },
 ] as const
 
 const expandedWidth = 280
@@ -59,10 +68,32 @@ function DashboardLayout() {
   const [desktopHovered, setDesktopHovered] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [logoutLoading, setLogoutLoading] = useState(false)
+  const [masterOpen, setMasterOpen] = useState(true)
+  const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null)
 
   const userName = useMemo(
     () => authState.user?.name || authState.user?.username || authState.user?.email || localStorage.getItem('auth_user') || 'User',
     [authState.user],
+  )
+  const permissionSet = useMemo(
+    () => new Set((authState.rolePermissions?.permissions ?? []).map((permission) => permission.name)),
+    [authState.rolePermissions],
+  )
+  const visibleMenuItems = useMemo(
+    () => primaryMenuItems.filter((item) => item.permission === null || permissionSet.has(item.permission)),
+    [permissionSet],
+  )
+  const visibleMasterChildren = useMemo(
+    () => masterMenuChildren.filter((item) => permissionSet.has(item.permission)),
+    [permissionSet],
+  )
+  const flatVisibleItems = useMemo(
+    () => [...visibleMenuItems, ...visibleMasterChildren],
+    [visibleMenuItems, visibleMasterChildren],
+  )
+  const isMasterRouteActive = useMemo(
+    () => visibleMasterChildren.some((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)),
+    [location.pathname, visibleMasterChildren],
   )
   const sidebarExpanded = isDesktop ? desktopPinned || desktopHovered : true
   const sidebarWidth = isDesktop ? (sidebarExpanded ? expandedWidth : collapsedWidth) : expandedWidth
@@ -70,9 +101,15 @@ function DashboardLayout() {
   const pageTitle =
     (location.pathname.startsWith('/role-edit/') || location.pathname.startsWith('/dashboard/role-edit/')
       ? 'Role Permissions'
+      : location.pathname === '/profile' || location.pathname === '/dashboard/profile'
+        ? 'Profile'
       : undefined) ??
-    menuItems.find((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))?.label ??
+    flatVisibleItems.find((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))?.label ??
     'Dashboard'
+
+  useEffect(() => {
+    setMasterOpen(isMasterRouteActive)
+  }, [isMasterRouteActive])
 
   const onLogout = async () => {
     setLogoutLoading(true)
@@ -86,6 +123,14 @@ function DashboardLayout() {
       setLogoutLoading(false)
       navigate('/login', { replace: true })
     }
+  }
+
+  const onOpenProfileMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setProfileMenuAnchor(event.currentTarget)
+  }
+
+  const onCloseProfileMenu = () => {
+    setProfileMenuAnchor(null)
   }
 
   const sidebarContent = (
@@ -116,14 +161,20 @@ function DashboardLayout() {
       <Divider className="!border-slate-700" />
 
       <List className="app-scrollbar px-2 py-3">
-        {menuItems.map((item) => {
+        {visibleMenuItems.map((item) => {
           const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
           return (
             <ListItemButton
               key={item.path}
-              component={NavLink}
-              to={item.path}
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                setMobileOpen(false)
+                setMasterOpen(false)
+                if (item.path === '/dashboard' && location.pathname === '/dashboard') {
+                  navigate(0)
+                  return
+                }
+                navigate(item.path)
+              }}
               className={`!mb-1 !rounded-xl ${active ? '!bg-cyan-500/15' : '!bg-transparent hover:!bg-slate-700/70'}`}
             >
               <ListItemIcon className={`!min-w-10 ${active ? '!text-cyan-300' : '!text-slate-300'}`}>{item.icon}</ListItemIcon>
@@ -136,6 +187,55 @@ function DashboardLayout() {
             </ListItemButton>
           )
         })}
+
+        {visibleMasterChildren.length > 0 ? (
+          <>
+            <ListItemButton
+              onClick={() => setMasterOpen((prev) => !prev)}
+              className={`!mb-1 !rounded-xl ${
+                visibleMasterChildren.some((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))
+                  ? '!bg-cyan-500/15'
+                  : '!bg-transparent hover:!bg-slate-700/70'
+              }`}
+            >
+              <ListItemIcon className="!min-w-10 !text-slate-300">
+                <SettingsRoundedIcon />
+              </ListItemIcon>
+              {sidebarExpanded ? (
+                <>
+                  <ListItemText primary="Master" primaryTypographyProps={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0' }} />
+                  {masterOpen ? <ExpandLessRoundedIcon className="!text-slate-300" /> : <ExpandMoreRoundedIcon className="!text-slate-300" />}
+                </>
+              ) : null}
+            </ListItemButton>
+
+            <Collapse in={masterOpen && sidebarExpanded} timeout="auto" unmountOnExit>
+              <List disablePadding>
+                {visibleMasterChildren.map((item) => {
+                  const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+                  return (
+                    <ListItemButton
+                      key={item.path}
+                      onClick={() => {
+                        setMobileOpen(false)
+                        navigate(item.path)
+                      }}
+                      className={`!mb-1 !ml-4 !rounded-xl ${
+                        active ? '!bg-cyan-500/15' : '!bg-transparent hover:!bg-slate-700/70'
+                      }`}
+                    >
+                      <ListItemIcon className={`!min-w-10 ${active ? '!text-cyan-300' : '!text-slate-300'}`}>{item.icon}</ListItemIcon>
+                      <ListItemText
+                        primary={item.label}
+                        primaryTypographyProps={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? '#67e8f9' : '#e2e8f0' }}
+                      />
+                    </ListItemButton>
+                  )
+                })}
+              </List>
+            </Collapse>
+          </>
+        ) : null}
       </List>
     </Box>
   )
@@ -193,28 +293,54 @@ function DashboardLayout() {
                   {mode === 'light' ? <DarkModeRoundedIcon /> : <LightModeRoundedIcon />}
                 </IconButton>
               </Tooltip>
-              <Typography variant="body2" className="!hidden sm:!block" color="text.secondary">
-                {userName}
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                startIcon={<LogoutRoundedIcon />}
-                disabled={logoutLoading}
-                onClick={() => void onLogout()}
-                className="!rounded-lg"
-              >
-                {logoutLoading ? <CustomLoader size={16} color="inherit" /> : 'Logout'}
-              </Button>
+              <Tooltip title="Profile">
+                <IconButton color="primary" onClick={onOpenProfileMenu}>
+                  <Avatar className="!h-8 !w-8 !bg-cyan-600 !text-sm !font-semibold">
+                    {(userName || 'U').trim().charAt(0).toUpperCase()}
+                  </Avatar>
+                </IconButton>
+              </Tooltip>
             </Box>
           </Toolbar>
         </AppBar>
 
         <Box className="app-scrollbar flex-1 overflow-auto p-3 sm:p-5">
-          <Outlet />
+          <Outlet key={`${location.pathname}${location.search}`} />
         </Box>
       </Box>
+
+      <Menu
+        anchorEl={profileMenuAnchor}
+        open={Boolean(profileMenuAnchor)}
+        onClose={onCloseProfileMenu}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem
+          onClick={() => {
+            onCloseProfileMenu()
+            navigate('/profile')
+          }}
+        >
+          <ListItemIcon>
+            <PersonRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={userName} secondary={authState.user?.email || 'Profile'} />
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            onCloseProfileMenu()
+            void onLogout()
+          }}
+          disabled={logoutLoading}
+        >
+          <ListItemIcon>
+            <LogoutRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={logoutLoading ? 'Logging out...' : 'Logout'} />
+          {logoutLoading ? <CustomLoader size={14} /> : null}
+        </MenuItem>
+      </Menu>
     </Box>
   )
 }

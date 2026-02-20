@@ -5,6 +5,7 @@ import DashboardLayout from './pages/DashboardLayout'
 import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
 import PermissionsPage from './pages/PermissionsPage'
+import ProfilePage from './pages/ProfilePage'
 import RoleEditPage from './pages/RoleEditPage'
 import RolesPage from './pages/RolesPage'
 import UsersPage from './pages/UsersPage'
@@ -55,9 +56,11 @@ function App() {
         <Route path="role-edit/:roleId" element={<RoleEditPage />} />
         <Route path="user" element={<UsersPage />} />
         <Route path="permission" element={<PermissionsPage />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="roles" element={<Navigate to="/role" replace />} />
         <Route path="users" element={<Navigate to="/user" replace />} />
         <Route path="permissions" element={<Navigate to="/permission" replace />} />
+        <Route path="dashboard/profile" element={<Navigate to="/profile" replace />} />
         <Route path="dashboard/role" element={<Navigate to="/role" replace />} />
         <Route path="dashboard/roles" element={<Navigate to="/role" replace />} />
         <Route path="dashboard/role-edit/:roleId" element={<RoleEditPage />} />

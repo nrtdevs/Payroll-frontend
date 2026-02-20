@@ -14,6 +14,7 @@ import {
   TableCell,
   Tooltip,
   Typography,
+  useTheme,
 } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
@@ -42,6 +43,7 @@ const normalizeTokenValue = (value: string): string => {
 }
 
 function PermissionsPage() {
+  const theme = useTheme()
   const { showToast } = useToast()
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [loadingPermissions, setLoadingPermissions] = useState(false)
@@ -213,7 +215,14 @@ function PermissionsPage() {
 
   return (
     <div className="space-y-4">
-      <Card className="!rounded-2xl">
+      <Card
+        className="!rounded-2xl"
+        sx={{
+          border: '1px solid',
+          borderColor: 'divider',
+          backgroundColor: theme.palette.background.paper,
+        }}
+      >
         <CardContent>
           <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1.5}>
             <Typography variant="h5" className="!font-semibold">
@@ -234,7 +243,16 @@ function PermissionsPage() {
             </Stack>
           </Stack>
 
-          <Box component="form" onSubmit={onFilterSubmit} className="!mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <Box
+            component="form"
+            onSubmit={onFilterSubmit}
+            className="!mt-4 grid grid-cols-1 gap-3 rounded-xl p-3 md:grid-cols-4"
+            sx={{
+              border: '1px solid',
+              borderColor: 'divider',
+              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(15,23,42,0.35)' : 'rgba(248,250,252,0.75)',
+            }}
+          >
             <CustomInput
               label="Filter Name"
               value={filterDraft.name ?? ''}
@@ -305,7 +323,11 @@ function PermissionsPage() {
 
       <Dialog open={createOpen} onClose={closeCreateModal} fullWidth maxWidth="sm">
         <DialogTitle>Create Permission</DialogTitle>
-        <DialogContent>
+        <DialogContent
+          sx={{
+            backgroundColor: theme.palette.background.paper,
+          }}
+        >
           <Box component="form" onSubmit={onCreateSubmit} className="space-y-4 pt-1">
             {permissionFormFields}
             <Stack direction="row" spacing={1} justifyContent="flex-end">
@@ -322,7 +344,11 @@ function PermissionsPage() {
 
       <Dialog open={editOpen} onClose={closeEditModal} fullWidth maxWidth="sm">
         <DialogTitle>Update Permission #{editingPermissionId}</DialogTitle>
-        <DialogContent>
+        <DialogContent
+          sx={{
+            backgroundColor: theme.palette.background.paper,
+          }}
+        >
           <Box component="form" onSubmit={onEditSubmit} className="space-y-4 pt-1">
             {permissionFormFields}
             <Stack direction="row" spacing={1} justifyContent="flex-end">

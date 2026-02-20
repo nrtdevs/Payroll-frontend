@@ -157,7 +157,26 @@ function UsersPage() {
     setSubmittingUser(true)
     setUserError('')
     try {
-      await userService.createUser(userForm)
+      const createPayload: CreateUserPayload = {
+        name: userForm.name,
+        branch_id: userForm.branch_id,
+        role_id: userForm.role_id,
+        salary_type: userForm.salary_type,
+        salary: userForm.salary,
+        leave_balance: userForm.leave_balance,
+        status: userForm.status,
+        current_address: userForm.current_address,
+        home_address: userForm.home_address,
+        pan: userForm.pan,
+        aadhaar: userForm.aadhaar,
+        mobile: userForm.mobile,
+        number: userForm.number,
+        email: userForm.email,
+        password: userForm.password,
+        father_name: userForm.father_name,
+        mother_name: userForm.mother_name,
+      }
+      await userService.createUser(createPayload)
       closeCreateModal()
       showToast('User created successfully.', 'success')
       await loadUsers()
@@ -193,7 +212,6 @@ function UsersPage() {
         email: userForm.email,
         father_name: userForm.father_name,
         mother_name: userForm.mother_name,
-        business_id: userForm.business_id,
       }
       await userService.updateUser(editingUserId, updatePayload)
       closeEditModal()
@@ -317,13 +335,6 @@ function UsersPage() {
         type="number"
         value={userForm.leave_balance ?? ''}
         onChange={(e) => setUserForm((p) => ({ ...p, leave_balance: toNullableNumber(e.target.value) }))}
-        required
-      />
-      <CustomInput
-        label="Business ID"
-        type="number"
-        value={userForm.business_id ?? ''}
-        onChange={(e) => setUserForm((p) => ({ ...p, business_id: toNullableNumber(e.target.value) }))}
         required
       />
       <CustomInput label="Email" type="email" value={userForm.email} onChange={(e) => setUserForm((p) => ({ ...p, email: e.target.value }))} required />

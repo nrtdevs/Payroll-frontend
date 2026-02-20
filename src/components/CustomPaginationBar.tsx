@@ -31,7 +31,7 @@ function CustomPaginationBar({
       className="!mt-3"
     >
       <Stack direction="row" spacing={1} alignItems="center">
-        <Typography variant="body2" className="!text-slate-600">
+        <Typography variant="body2" color="text.secondary">
           Rows per page
         </Typography>
         <FormControl size="small">
@@ -43,7 +43,7 @@ function CustomPaginationBar({
             ))}
           </Select>
         </FormControl>
-        <Typography variant="body2" className="!text-slate-600">
+        <Typography variant="body2" color="text.secondary">
           {start}-{end} of {totalRows}
         </Typography>
       </Stack>

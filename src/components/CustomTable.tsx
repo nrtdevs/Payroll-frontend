@@ -120,11 +120,14 @@ function CustomTable<T>({
         component={Paper}
         elevation={0}
         className="app-scrollbar !mt-4 !overflow-x-auto"
-        sx={{
+        sx={(theme) => ({
           border: '1px solid',
           borderColor: 'divider',
-          background: 'linear-gradient(180deg, rgba(248,250,252,0.45) 0%, rgba(255,255,255,0.98) 36%)',
-        }}
+          background:
+            theme.palette.mode === 'dark'
+              ? 'linear-gradient(180deg, rgba(15,23,42,0.85) 0%, rgba(17,24,39,0.96) 36%)'
+              : 'linear-gradient(180deg, rgba(248,250,252,0.45) 0%, rgba(255,255,255,0.98) 36%)',
+        })}
       >
         <Table size="small" sx={{ minWidth: 720 }}>
           <TableHead>
@@ -133,15 +136,16 @@ function CustomTable<T>({
                 <TableCell
                   key={column.key}
                   align={column.align}
-                  sx={{
-                    backgroundColor: 'rgba(15, 76, 129, 0.08)',
+                  sx={(theme) => ({
+                    backgroundColor:
+                      theme.palette.mode === 'dark' ? 'rgba(14,165,233,0.18)' : 'rgba(15, 76, 129, 0.08)',
                     color: 'text.primary',
                     fontWeight: 700,
                     letterSpacing: '0.02em',
                     textTransform: 'uppercase',
                     fontSize: '0.74rem',
                     py: 1.3,
-                  }}
+                  })}
                 >
                   {(column.sortable ?? column.key !== 'action') ? (
                     <TableSortLabel
@@ -176,11 +180,13 @@ function CustomTable<T>({
                 <TableRow
                   key={rowKey(row)}
                   hover
-                  sx={{
-                    '&:nth-of-type(odd)': { backgroundColor: 'rgba(15, 23, 42, 0.02)' },
+                  sx={(theme) => ({
+                    '&:nth-of-type(odd)': {
+                      backgroundColor: theme.palette.mode === 'dark' ? 'rgba(148,163,184,0.08)' : 'rgba(15, 23, 42, 0.02)',
+                    },
                     '& .MuiTableCell-root': { py: 1.4 },
                     transition: 'background-color 120ms ease',
-                  }}
+                  })}
                 >
                   {renderRow(row)}
                 </TableRow>
