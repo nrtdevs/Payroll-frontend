@@ -51,6 +51,20 @@ export type CreateUserPayload = UserPayload & {
   password: string
 }
 
+export type UserListFilters = {
+  first_name?: string
+  mobile_number?: string
+  branch_id?: number | null
+}
+
+export type UserPaginatedResponse = {
+  items: User[]
+  page: number
+  size: number
+  total: number
+  total_pages: number
+}
+
 const getAuthToken = (): string => {
   const token = localStorage.getItem('auth_token')
   if (!token) {
@@ -158,6 +172,40 @@ export const userService = {
 
     const data = (await response.json()) as unknown
     return normalizeUser(data)
+  },
+
+  async getUsersPaginated(page: number, size: number, filters: UserListFilters = {}): Promise<UserPaginatedResponse> {
+    const query = new URLSearchParams()
+    query.set('page', String(page))
+    query.set('size', String(size))
+    if (filters.first_name?.trim()) query.set('first_name', filters.first_name.trim())
+    if (filters.mobile_number?.trim()) query.set('mobile_number', filters.mobile_number.trim())
+    if (filters.branch_id !== null && filters.branch_id !== undefined) query.set('branch_id', String(filters.branch_id))
+
+    const response = await fetch(`${API_URL}/users/paginated?${query.toString()}`, {
+      method: 'GET',
+      headers: authHeaders(false),
+    })
+
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response))
+    }
+
+    const raw = (await response.json()) as unknown
+    const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+    const items = normalizeUserList(obj.items ?? [])
+    const rawPage = typeof obj.page === 'number' ? obj.page : Number(obj.page)
+    const rawSize = typeof obj.size === 'number' ? obj.size : Number(obj.size)
+    const rawTotal = typeof obj.total === 'number' ? obj.total : Number(obj.total)
+    const rawTotalPages = typeof obj.total_pages === 'number' ? obj.total_pages : Number(obj.total_pages)
+
+    return {
+      items,
+      page: Number.isFinite(rawPage) && rawPage > 0 ? rawPage : page,
+      size: Number.isFinite(rawSize) && rawSize > 0 ? rawSize : size,
+      total: Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length,
+      total_pages: Number.isFinite(rawTotalPages) && rawTotalPages >= 0 ? rawTotalPages : 0,
+    }
   },
 
   async updateUser(id: number, payload: UserPayload): Promise<User | null> {

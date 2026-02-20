@@ -11,12 +11,7 @@ import {
   DialogTitle,
   IconButton,
   Stack,
-  Table,
-  TableBody,
   TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -25,8 +20,9 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { permissionService } from '../services/permissionService'
-import type { Permission, PermissionPayload } from '../services/permissionService'
+import type { Permission, PermissionListFilters, PermissionPayload } from '../services/permissionService'
 import CustomInput from '../components/CustomInput'
+import CustomTable, { type CustomTableColumn } from '../components/CustomTable'
 
 const emptyPermissionForm: PermissionPayload = {
   permission_name: '',
@@ -53,13 +49,28 @@ function PermissionsPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [permissionForm, setPermissionForm] = useState<PermissionPayload>(emptyPermissionForm)
   const [editingPermissionId, setEditingPermissionId] = useState<number | null>(null)
+  const [page, setPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [totalPermissions, setTotalPermissions] = useState(0)
+  const [filterDraft, setFilterDraft] = useState<PermissionListFilters>({ name: '', group: '' })
+  const [filters, setFilters] = useState<PermissionListFilters>({ name: '', group: '' })
+
+  const permissionColumns: CustomTableColumn[] = [
+    { key: 'id', label: 'ID' },
+    { key: 'permission_name', label: 'Permission Name' },
+    { key: 'group', label: 'Group' },
+    { key: 'description', label: 'Description' },
+    { key: 'created_at', label: 'Created At' },
+    { key: 'action', label: 'Action', align: 'right' },
+  ]
 
   const loadPermissions = async () => {
     setLoadingPermissions(true)
     setPermissionError('')
     try {
-      const data = await permissionService.getPermissions()
-      setPermissions(data)
+      const data = await permissionService.getPermissionsPaginated(page, rowsPerPage, filters)
+      setPermissions(data.items)
+      setTotalPermissions(data.total)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load permissions.'
       setPermissionError(message)
@@ -70,7 +81,7 @@ function PermissionsPage() {
 
   useEffect(() => {
     void loadPermissions()
-  }, [])
+  }, [page, rowsPerPage, filters])
 
   const closeCreateModal = () => {
     setCreateOpen(false)
@@ -147,6 +158,18 @@ function PermissionsPage() {
     }
   }
 
+  const onFilterSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setPage(1)
+    setFilters({ name: filterDraft.name?.trim() ?? '', group: filterDraft.group?.trim() ?? '' })
+  }
+
+  const onResetFilters = () => {
+    setFilterDraft({ name: '', group: '' })
+    setFilters({ name: '', group: '' })
+    setPage(1)
+  }
+
   const permissionFormFields = (
     <div className="grid grid-cols-1 gap-3">
       <CustomInput
@@ -198,54 +221,71 @@ function PermissionsPage() {
             </Stack>
           </Stack>
 
+          <Box component="form" onSubmit={onFilterSubmit} className="!mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+            <CustomInput
+              label="Filter Name"
+              value={filterDraft.name ?? ''}
+              onChange={(event) => setFilterDraft((prev) => ({ ...prev, name: event.target.value }))}
+              placeholder="user"
+            />
+            <CustomInput
+              label="Filter Group"
+              value={filterDraft.group ?? ''}
+              onChange={(event) => setFilterDraft((prev) => ({ ...prev, group: event.target.value }))}
+              placeholder="AUTH"
+            />
+            <div className="md:col-span-2 flex items-end gap-2">
+              <Button type="submit" variant="contained" className="!h-[44px]">
+                Apply
+              </Button>
+              <Button type="button" variant="outlined" onClick={onResetFilters} className="!h-[44px]">
+                Reset
+              </Button>
+            </div>
+          </Box>
+
           {permissionError ? (
             <Alert severity="error" className="!mt-3">
               {permissionError}
             </Alert>
           ) : null}
 
-          <TableContainer className="app-scrollbar !mt-4 !overflow-x-auto">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Permission Name</TableCell>
-                  <TableCell>Group</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell>Created At</TableCell>
-                  <TableCell align="right">Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {permissions.length === 0 && !loadingPermissions ? (
-                  <TableRow>
-                    <TableCell colSpan={6}>No permissions found.</TableCell>
-                  </TableRow>
-                ) : null}
-                {permissions.map((permission) => (
-                  <TableRow key={permission.id} hover>
-                    <TableCell>{permission.id}</TableCell>
-                    <TableCell>{permission.permission_name}</TableCell>
-                    <TableCell>{permission.group || '-'}</TableCell>
-                    <TableCell>{permission.description || '-'}</TableCell>
-                    <TableCell>{permission.created_at || '-'}</TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="Edit">
-                        <IconButton onClick={() => onEditPermission(permission)}>
-                          <EditRoundedIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" onClick={() => void onDeletePermission(permission)}>
-                          <DeleteRoundedIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <CustomTable
+            columns={permissionColumns}
+            rows={permissions}
+            rowKey={(permission) => permission.id}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={(nextRowsPerPage) => {
+              setRowsPerPage(nextRowsPerPage)
+              setPage(1)
+            }}
+            emptyMessage={loadingPermissions ? 'Loading permissions...' : 'No permissions found.'}
+            totalRows={totalPermissions}
+            paginateRows={false}
+            renderRow={(permission) => (
+              <>
+                <TableCell>{permission.id}</TableCell>
+                <TableCell>{permission.permission_name}</TableCell>
+                <TableCell>{permission.group || '-'}</TableCell>
+                <TableCell>{permission.description || '-'}</TableCell>
+                <TableCell>{permission.created_at || '-'}</TableCell>
+                <TableCell align="right">
+                  <Tooltip title="Edit">
+                    <IconButton onClick={() => onEditPermission(permission)}>
+                      <EditRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton color="error" onClick={() => void onDeletePermission(permission)}>
+                      <DeleteRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </>
+            )}
+          />
         </CardContent>
       </Card>
 

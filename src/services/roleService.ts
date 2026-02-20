@@ -10,6 +10,18 @@ type CreateRolePayload = {
   name: string
 }
 
+export type RoleListFilters = {
+  name?: string
+}
+
+export type RolePaginatedResponse = {
+  items: Role[]
+  page: number
+  size: number
+  total: number
+  total_pages: number
+}
+
 const getAuthToken = (): string => {
   const token = localStorage.getItem('auth_token')
   if (!token) {
@@ -88,6 +100,38 @@ export const roleService = {
 
     const data = (await response.json()) as unknown
     return normalizeRole(data)
+  },
+
+  async getRolesPaginated(page: number, size: number, filters: RoleListFilters = {}): Promise<RolePaginatedResponse> {
+    const query = new URLSearchParams()
+    query.set('page', String(page))
+    query.set('size', String(size))
+    if (filters.name?.trim()) query.set('name', filters.name.trim())
+
+    const response = await fetch(`${API_URL}/roles/paginated?${query.toString()}`, {
+      method: 'GET',
+      headers: authHeaders(false),
+    })
+
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response))
+    }
+
+    const raw = (await response.json()) as unknown
+    const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+    const items = normalizeRoleList(obj.items ?? [])
+    const rawPage = typeof obj.page === 'number' ? obj.page : Number(obj.page)
+    const rawSize = typeof obj.size === 'number' ? obj.size : Number(obj.size)
+    const rawTotal = typeof obj.total === 'number' ? obj.total : Number(obj.total)
+    const rawTotalPages = typeof obj.total_pages === 'number' ? obj.total_pages : Number(obj.total_pages)
+
+    return {
+      items,
+      page: Number.isFinite(rawPage) && rawPage > 0 ? rawPage : page,
+      size: Number.isFinite(rawSize) && rawSize > 0 ? rawSize : size,
+      total: Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length,
+      total_pages: Number.isFinite(rawTotalPages) && rawTotalPages >= 0 ? rawTotalPages : 0,
+    }
   },
 
   async deleteRole(id: number): Promise<void> {

@@ -11,12 +11,7 @@ import {
   DialogTitle,
   IconButton,
   Stack,
-  Table,
-  TableBody,
   TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -25,8 +20,9 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import { roleService } from '../services/roleService'
-import type { Role } from '../services/roleService'
+import type { Role, RoleListFilters } from '../services/roleService'
 import CustomInput from '../components/CustomInput'
+import CustomTable, { type CustomTableColumn } from '../components/CustomTable'
 
 function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([])
@@ -38,13 +34,26 @@ function RolesPage() {
   const [viewOpen, setViewOpen] = useState(false)
   const [selectedRole, setSelectedRole] = useState<Role | null>(null)
   const [roleName, setRoleName] = useState('')
+  const [page, setPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [totalRoles, setTotalRoles] = useState(0)
+  const [filterDraft, setFilterDraft] = useState<RoleListFilters>({ name: '' })
+  const [filters, setFilters] = useState<RoleListFilters>({ name: '' })
+
+  const roleColumns: CustomTableColumn[] = [
+    { key: 'id', label: 'ID' },
+    { key: 'name', label: 'Name' },
+    { key: 'created_at', label: 'Created At' },
+    { key: 'action', label: 'Action', align: 'right' },
+  ]
 
   const loadRoles = async () => {
     setLoadingRoles(true)
     setRoleError('')
     try {
-      const data = await roleService.getRoles()
-      setRoles(data)
+      const data = await roleService.getRolesPaginated(page, rowsPerPage, filters)
+      setRoles(data.items)
+      setTotalRoles(data.total)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load roles.'
       setRoleError(message)
@@ -55,7 +64,7 @@ function RolesPage() {
 
   useEffect(() => {
     void loadRoles()
-  }, [])
+  }, [page, rowsPerPage, filters])
 
   const onCreateSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -87,6 +96,18 @@ function RolesPage() {
     }
   }
 
+  const onFilterSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setPage(1)
+    setFilters({ name: filterDraft.name?.trim() ?? '' })
+  }
+
+  const onResetFilters = () => {
+    setFilterDraft({ name: '' })
+    setFilters({ name: '' })
+    setPage(1)
+  }
+
   return (
     <div className="space-y-4">
       <Card className="!rounded-2xl">
@@ -105,56 +126,68 @@ function RolesPage() {
             </Stack>
           </Stack>
 
+          <Box component="form" onSubmit={onFilterSubmit} className="!mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+            <CustomInput
+              label="Filter Name"
+              value={filterDraft.name ?? ''}
+              onChange={(event) => setFilterDraft((prev) => ({ ...prev, name: event.target.value }))}
+              placeholder="MASTER_ADMIN"
+            />
+            <div className="md:col-span-3 flex items-end gap-2">
+              <Button type="submit" variant="contained" className="!h-[44px]">
+                Apply
+              </Button>
+              <Button type="button" variant="outlined" onClick={onResetFilters} className="!h-[44px]">
+                Reset
+              </Button>
+            </div>
+          </Box>
+
           {roleError ? (
             <Alert severity="error" className="!mt-3">
               {roleError}
             </Alert>
           ) : null}
 
-          <TableContainer className="app-scrollbar !mt-4 !overflow-x-auto">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Created At</TableCell>
-                  <TableCell align="right">Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {roles.length === 0 && !loadingRoles ? (
-                  <TableRow>
-                    <TableCell colSpan={4}>No roles found.</TableCell>
-                  </TableRow>
-                ) : null}
-
-                {roles.map((role) => (
-                  <TableRow key={role.id} hover>
-                    <TableCell>{role.id}</TableCell>
-                    <TableCell>{role.name}</TableCell>
-                    <TableCell>{role.created_at || '-'}</TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="View">
-                        <IconButton
-                          onClick={() => {
-                            setSelectedRole(role)
-                            setViewOpen(true)
-                          }}
-                        >
-                          <VisibilityRoundedIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" onClick={() => void onDeleteRole(role)}>
-                          <DeleteRoundedIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <CustomTable
+            columns={roleColumns}
+            rows={roles}
+            rowKey={(role) => role.id}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={(nextRowsPerPage) => {
+              setRowsPerPage(nextRowsPerPage)
+              setPage(1)
+            }}
+            emptyMessage={loadingRoles ? 'Loading roles...' : 'No roles found.'}
+            totalRows={totalRoles}
+            paginateRows={false}
+            renderRow={(role) => (
+              <>
+                <TableCell>{role.id}</TableCell>
+                <TableCell>{role.name}</TableCell>
+                <TableCell>{role.created_at || '-'}</TableCell>
+                <TableCell align="right">
+                  <Tooltip title="View">
+                    <IconButton
+                      onClick={() => {
+                        setSelectedRole(role)
+                        setViewOpen(true)
+                      }}
+                    >
+                      <VisibilityRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton color="error" onClick={() => void onDeleteRole(role)}>
+                      <DeleteRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </>
+            )}
+          />
         </CardContent>
       </Card>
 

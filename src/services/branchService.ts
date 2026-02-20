@@ -10,6 +10,22 @@ export type BranchPayload = {
 
 export type Branch = BranchPayload & {
   id: number
+  created_at?: string
+}
+
+export type BranchListFilters = {
+  name?: string
+  city?: string
+  state?: string
+  country?: string
+}
+
+export type BranchPaginatedResponse = {
+  items: Branch[]
+  page: number
+  size: number
+  total: number
+  total_pages: number
 }
 
 const getAuthToken = (): string => {
@@ -56,6 +72,7 @@ const normalizeBranch = (value: unknown): Branch | null => {
     city: typeof obj.city === 'string' ? obj.city : '',
     state: typeof obj.state === 'string' ? obj.state : '',
     country: typeof obj.country === 'string' ? obj.country : '',
+    created_at: typeof obj.created_at === 'string' ? obj.created_at : undefined,
   }
 }
 
@@ -109,6 +126,41 @@ export const branchService = {
     }
 
     return branch
+  },
+
+  async getBranchesPaginated(page: number, size: number, filters: BranchListFilters = {}): Promise<BranchPaginatedResponse> {
+    const query = new URLSearchParams()
+    query.set('page', String(page))
+    query.set('size', String(size))
+    if (filters.name?.trim()) query.set('name', filters.name.trim())
+    if (filters.city?.trim()) query.set('city', filters.city.trim())
+    if (filters.state?.trim()) query.set('state', filters.state.trim())
+    if (filters.country?.trim()) query.set('country', filters.country.trim())
+
+    const response = await fetch(`${API_URL}/branches/paginated?${query.toString()}`, {
+      method: 'GET',
+      headers: authHeaders(false),
+    })
+
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response))
+    }
+
+    const raw = (await response.json()) as unknown
+    const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+    const items = normalizeBranchList(obj.items ?? [])
+    const rawPage = typeof obj.page === 'number' ? obj.page : Number(obj.page)
+    const rawSize = typeof obj.size === 'number' ? obj.size : Number(obj.size)
+    const rawTotal = typeof obj.total === 'number' ? obj.total : Number(obj.total)
+    const rawTotalPages = typeof obj.total_pages === 'number' ? obj.total_pages : Number(obj.total_pages)
+
+    return {
+      items,
+      page: Number.isFinite(rawPage) && rawPage > 0 ? rawPage : page,
+      size: Number.isFinite(rawSize) && rawSize > 0 ? rawSize : size,
+      total: Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length,
+      total_pages: Number.isFinite(rawTotalPages) && rawTotalPages >= 0 ? rawTotalPages : 0,
+    }
   },
 
   async createBranch(payload: BranchPayload): Promise<Branch | null> {

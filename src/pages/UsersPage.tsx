@@ -11,12 +11,7 @@ import {
   DialogTitle,
   IconButton,
   Stack,
-  Table,
-  TableBody,
   TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -30,9 +25,10 @@ import { roleService } from '../services/roleService'
 import { userService } from '../services/userService'
 import type { Branch } from '../services/branchService'
 import type { Role } from '../services/roleService'
-import type { CreateUserPayload, User, UserPayload } from '../services/userService'
+import type { CreateUserPayload, User, UserListFilters, UserPayload } from '../services/userService'
 import CustomAutocomplete, { type CustomAutocompleteOption } from '../components/CustomAutocomplete'
 import CustomInput from '../components/CustomInput'
+import CustomTable, { type CustomTableColumn } from '../components/CustomTable'
 
 const emptyUserForm: CreateUserPayload = {
   name: '',
@@ -76,6 +72,11 @@ function UsersPage() {
   const [viewOpen, setViewOpen] = useState(false)
   const [editingUserId, setEditingUserId] = useState<number | null>(null)
   const [userForm, setUserForm] = useState<CreateUserPayload>(emptyUserForm)
+  const [page, setPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [filterDraft, setFilterDraft] = useState<UserListFilters>({ first_name: '', mobile_number: '', branch_id: null })
+  const [filters, setFilters] = useState<UserListFilters>({ first_name: '', mobile_number: '', branch_id: null })
 
   const branchOptions: CustomAutocompleteOption<number>[] = branches.map((branch) => ({
     label: `${branch.name} (#${branch.id})`,
@@ -89,13 +90,23 @@ function UsersPage() {
     { label: 'ACTIVE', value: 'ACTIVE' },
     { label: 'INACTIVE', value: 'INACTIVE' },
   ]
+  const userColumns: CustomTableColumn[] = [
+    { key: 'id', label: 'ID' },
+    { key: 'username', label: 'Username' },
+    { key: 'email', label: 'Email' },
+    { key: 'name', label: 'Name' },
+    { key: 'role', label: 'Role' },
+    { key: 'status', label: 'Status' },
+    { key: 'action', label: 'Action', align: 'right' },
+  ]
 
   const loadUsers = async () => {
     setLoadingUsers(true)
     setUserError('')
     try {
-      const data = await userService.getUsers()
-      setUsers(data)
+      const data = await userService.getUsersPaginated(page, rowsPerPage, filters)
+      setUsers(data.items)
+      setTotalUsers(data.total)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load users.'
       setUserError(message)
@@ -117,6 +128,9 @@ function UsersPage() {
 
   useEffect(() => {
     void loadUsers()
+  }, [page, rowsPerPage, filters])
+
+  useEffect(() => {
     void loadFormOptions()
   }, [])
 
@@ -224,6 +238,23 @@ function UsersPage() {
       const message = error instanceof Error ? error.message : 'Failed to delete user.'
       setUserError(message)
     }
+  }
+
+  const onFilterSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setPage(1)
+    setFilters({
+      first_name: filterDraft.first_name?.trim() ?? '',
+      mobile_number: filterDraft.mobile_number?.trim() ?? '',
+      branch_id: filterDraft.branch_id ?? null,
+    })
+  }
+
+  const onResetFilters = () => {
+    const emptyFilters: UserListFilters = { first_name: '', mobile_number: '', branch_id: null }
+    setFilterDraft(emptyFilters)
+    setFilters(emptyFilters)
+    setPage(1)
   }
 
   const userFormFields = (includePassword: boolean) => (
@@ -339,66 +370,89 @@ function UsersPage() {
             </Stack>
           </Stack>
 
+          <Box component="form" onSubmit={onFilterSubmit} className="!mt-4 grid grid-cols-1 gap-3 md:grid-cols-5">
+            <CustomInput
+              label="Filter First Name"
+              value={filterDraft.first_name ?? ''}
+              onChange={(event) => setFilterDraft((prev) => ({ ...prev, first_name: event.target.value }))}
+              placeholder="Shivam Kumar"
+            />
+            <CustomInput
+              label="Filter Mobile"
+              value={filterDraft.mobile_number ?? ''}
+              onChange={(event) => setFilterDraft((prev) => ({ ...prev, mobile_number: event.target.value }))}
+              placeholder="6201763368"
+            />
+            <CustomAutocomplete
+              label="Filter Branch"
+              options={branchOptions}
+              value={filterDraft.branch_id ?? null}
+              onChange={(nextValue) => setFilterDraft((prev) => ({ ...prev, branch_id: nextValue }))}
+              placeholder="Select branch"
+            />
+            <Stack direction="row" spacing={1} alignItems="end" className="md:col-span-2">
+              <Button type="submit" variant="contained" className="!h-[44px]">
+                Apply
+              </Button>
+              <Button type="button" variant="outlined" onClick={onResetFilters} className="!h-[44px]">
+                Reset
+              </Button>
+            </Stack>
+          </Box>
+
           {userError ? (
             <Alert severity="error" className="!mt-3">
               {userError}
             </Alert>
           ) : null}
 
-          <TableContainer className="app-scrollbar !mt-4 !overflow-x-auto">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Username</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Role</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {users.length === 0 && !loadingUsers ? (
-                  <TableRow>
-                    <TableCell colSpan={7}>No users found.</TableCell>
-                  </TableRow>
-                ) : null}
-                {users.map((user) => (
-                  <TableRow key={user.id} hover>
-                    <TableCell>{user.id}</TableCell>
-                    <TableCell>{user.username || '-'}</TableCell>
-                    <TableCell>{user.email || '-'}</TableCell>
-                    <TableCell>{user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || '-'}</TableCell>
-                    <TableCell>{user.role || '-'}</TableCell>
-                    <TableCell>{user.status || '-'}</TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="View">
-                        <IconButton
-                          onClick={() => {
-                            setSelectedUser(user)
-                            setViewOpen(true)
-                          }}
-                        >
-                          <VisibilityRoundedIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Edit">
-                        <IconButton onClick={() => onEditUser(user)}>
-                          <EditRoundedIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" onClick={() => void onDeleteUser(user)}>
-                          <DeleteRoundedIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <CustomTable
+            columns={userColumns}
+            rows={users}
+            rowKey={(user) => user.id}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={(nextRowsPerPage) => {
+              setRowsPerPage(nextRowsPerPage)
+              setPage(1)
+            }}
+            emptyMessage={loadingUsers ? 'Loading users...' : 'No users found.'}
+            totalRows={totalUsers}
+            paginateRows={false}
+            renderRow={(user) => (
+              <>
+                <TableCell>{user.id}</TableCell>
+                <TableCell>{user.username || '-'}</TableCell>
+                <TableCell>{user.email || '-'}</TableCell>
+                <TableCell>{user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || '-'}</TableCell>
+                <TableCell>{user.role || '-'}</TableCell>
+                <TableCell>{user.status || '-'}</TableCell>
+                <TableCell align="right">
+                  <Tooltip title="View">
+                    <IconButton
+                      onClick={() => {
+                        setSelectedUser(user)
+                        setViewOpen(true)
+                      }}
+                    >
+                      <VisibilityRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Edit">
+                    <IconButton onClick={() => onEditUser(user)}>
+                      <EditRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton color="error" onClick={() => void onDeleteUser(user)}>
+                      <DeleteRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </>
+            )}
+          />
         </CardContent>
       </Card>
 

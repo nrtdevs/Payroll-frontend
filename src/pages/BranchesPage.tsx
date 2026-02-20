@@ -11,12 +11,7 @@ import {
   DialogTitle,
   IconButton,
   Stack,
-  Table,
-  TableBody,
   TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -26,8 +21,9 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import { branchService } from '../services/branchService'
-import type { Branch, BranchPayload } from '../services/branchService'
+import type { Branch, BranchListFilters, BranchPayload } from '../services/branchService'
 import CustomInput from '../components/CustomInput'
+import CustomTable, { type CustomTableColumn } from '../components/CustomTable'
 
 const emptyBranchForm: BranchPayload = {
   name: '',
@@ -49,13 +45,29 @@ function BranchesPage() {
   const [branchForm, setBranchForm] = useState<BranchPayload>(emptyBranchForm)
   const [editingBranchId, setEditingBranchId] = useState<number | null>(null)
   const [submittingBranch, setSubmittingBranch] = useState(false)
+  const [page, setPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [totalBranches, setTotalBranches] = useState(0)
+  const [filterDraft, setFilterDraft] = useState<BranchListFilters>({ name: '', city: '', state: '', country: '' })
+  const [filters, setFilters] = useState<BranchListFilters>({ name: '', city: '', state: '', country: '' })
+
+  const branchColumns: CustomTableColumn[] = [
+    { key: 'id', label: 'ID' },
+    { key: 'name', label: 'Name' },
+    { key: 'address', label: 'Address' },
+    { key: 'city', label: 'City' },
+    { key: 'state', label: 'State' },
+    { key: 'country', label: 'Country' },
+    { key: 'action', label: 'Action', align: 'right' },
+  ]
 
   const loadBranches = async () => {
     setLoadingBranches(true)
     setBranchError('')
     try {
-      const data = await branchService.getBranches()
-      setBranches(data)
+      const data = await branchService.getBranchesPaginated(page, rowsPerPage, filters)
+      setBranches(data.items)
+      setTotalBranches(data.total)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load branches.'
       setBranchError(message)
@@ -66,7 +78,7 @@ function BranchesPage() {
 
   useEffect(() => {
     void loadBranches()
-  }, [])
+  }, [page, rowsPerPage, filters])
 
   const closeCreateModal = () => {
     setCreateOpen(false)
@@ -152,6 +164,24 @@ function BranchesPage() {
     }
   }
 
+  const onFilterSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setPage(1)
+    setFilters({
+      name: filterDraft.name?.trim() ?? '',
+      city: filterDraft.city?.trim() ?? '',
+      state: filterDraft.state?.trim() ?? '',
+      country: filterDraft.country?.trim() ?? '',
+    })
+  }
+
+  const onResetFilters = () => {
+    const emptyFilters: BranchListFilters = { name: '', city: '', state: '', country: '' }
+    setFilterDraft(emptyFilters)
+    setFilters(emptyFilters)
+    setPage(1)
+  }
+
   return (
     <div className="space-y-4">
       <Card className="!rounded-2xl">
@@ -170,61 +200,89 @@ function BranchesPage() {
             </Stack>
           </Stack>
 
+          <Box component="form" onSubmit={onFilterSubmit} className="!mt-4 grid grid-cols-1 gap-3 md:grid-cols-5">
+            <CustomInput
+              label="Filter Name"
+              value={filterDraft.name ?? ''}
+              onChange={(event) => setFilterDraft((prev) => ({ ...prev, name: event.target.value }))}
+              placeholder="central"
+            />
+            <CustomInput
+              label="Filter City"
+              value={filterDraft.city ?? ''}
+              onChange={(event) => setFilterDraft((prev) => ({ ...prev, city: event.target.value }))}
+              placeholder="delhi"
+            />
+            <CustomInput
+              label="Filter State"
+              value={filterDraft.state ?? ''}
+              onChange={(event) => setFilterDraft((prev) => ({ ...prev, state: event.target.value }))}
+              placeholder="delhi"
+            />
+            <CustomInput
+              label="Filter Country"
+              value={filterDraft.country ?? ''}
+              onChange={(event) => setFilterDraft((prev) => ({ ...prev, country: event.target.value }))}
+              placeholder="india"
+            />
+            <Stack direction="row" spacing={1} alignItems="end">
+              <Button type="submit" variant="contained" className="!h-[44px]">
+                Apply
+              </Button>
+              <Button type="button" variant="outlined" onClick={onResetFilters} className="!h-[44px]">
+                Reset
+              </Button>
+            </Stack>
+          </Box>
+
           {branchError ? (
             <Alert severity="error" className="!mt-3">
               {branchError}
             </Alert>
           ) : null}
 
-          <TableContainer className="app-scrollbar !mt-4 !overflow-x-auto">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Address</TableCell>
-                  <TableCell>City</TableCell>
-                  <TableCell>State</TableCell>
-                  <TableCell>Country</TableCell>
-                  <TableCell align="right">Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {branches.length === 0 && !loadingBranches ? (
-                  <TableRow>
-                    <TableCell colSpan={7}>No branches found.</TableCell>
-                  </TableRow>
-                ) : null}
-                {branches.map((branch) => (
-                  <TableRow key={branch.id} hover>
-                    <TableCell>{branch.id}</TableCell>
-                    <TableCell>{branch.name}</TableCell>
-                    <TableCell>{branch.address}</TableCell>
-                    <TableCell>{branch.city}</TableCell>
-                    <TableCell>{branch.state}</TableCell>
-                    <TableCell>{branch.country}</TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="View">
-                        <IconButton onClick={() => void onViewBranch(branch.id)}>
-                          <VisibilityRoundedIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Edit">
-                        <IconButton onClick={() => onEditBranch(branch)}>
-                          <EditRoundedIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" onClick={() => void onDeleteBranch(branch)}>
-                          <DeleteRoundedIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <CustomTable
+            columns={branchColumns}
+            rows={branches}
+            rowKey={(branch) => branch.id}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={(nextRowsPerPage) => {
+              setRowsPerPage(nextRowsPerPage)
+              setPage(1)
+            }}
+            emptyMessage={loadingBranches ? 'Loading branches...' : 'No branches found.'}
+            totalRows={totalBranches}
+            paginateRows={false}
+            renderRow={(branch) => (
+              <>
+                <TableCell>{branch.id}</TableCell>
+                <TableCell>{branch.name}</TableCell>
+                <TableCell>{branch.address}</TableCell>
+                <TableCell>{branch.city}</TableCell>
+                <TableCell>{branch.state}</TableCell>
+                <TableCell>{branch.country}</TableCell>
+                <TableCell align="right">
+                  <Tooltip title="View">
+                    <IconButton onClick={() => void onViewBranch(branch.id)}>
+                      <VisibilityRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Edit">
+                    <IconButton onClick={() => onEditBranch(branch)}>
+                      <EditRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton color="error" onClick={() => void onDeleteBranch(branch)}>
+                      <DeleteRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </>
+            )}
+          />
         </CardContent>
       </Card>
 
