@@ -25,7 +25,38 @@ export type User = {
   number?: string | null
   father_name?: string | null
   mother_name?: string | null
+  bank_account?: UserBankAccountPayload | null
+  educations?: UserEducation[] | null
+  previous_companies?: UserPreviousCompany[] | null
+  documents?: UserDocument[] | null
   created_at?: string | null
+}
+
+export type UserDocument = {
+  id: number
+  document_type: string
+  original_filename: string
+  content_type: string
+  file_size: number
+  created_at: string
+}
+
+export type UserEducation = {
+  id: number
+  degree: string
+  institution: string
+  year_of_passing: number | null
+  percentage: string | number | null
+  documents: UserDocument[]
+}
+
+export type UserPreviousCompany = {
+  id: number
+  company_name: string
+  designation: string
+  start_date: string
+  end_date: string
+  documents: UserDocument[]
 }
 
 export type UserPayload = {
@@ -50,6 +81,63 @@ export type UserPayload = {
 
 export type CreateUserPayload = UserPayload & {
   password: string
+}
+
+export type UserBankAccountPayload = {
+  account_holder_name: string
+  account_number: string
+  ifsc_code: string
+  bank_name: string
+}
+
+export type UserEducationPayload = {
+  record_key: string
+  degree: string
+  institution: string
+  year_of_passing: number | null
+  percentage: number | null
+}
+
+export type UserPreviousCompanyPayload = {
+  record_key: string
+  company_name: string
+  designation: string
+  start_date: string
+  end_date: string
+}
+
+export type CreateUserRequest = {
+  payload: CreateUserPayload & UserNestedPayload
+  education_file_map?: Record<string, number[]>
+  company_file_map?: Record<string, number[]>
+  files?: {
+    profile_image?: File | null
+    aadhaar_copy?: File | null
+    pan_copy?: File | null
+    bank_proof?: File | null
+    education_marksheets?: File[]
+    experience_proofs?: File[]
+  }
+}
+
+export type UserNestedPayload = {
+  bank_account: UserBankAccountPayload
+  educations: UserEducationPayload[]
+  previous_companies: UserPreviousCompanyPayload[]
+}
+
+export type UpdateUserRequest = {
+  payload: UserPayload & UserNestedPayload
+  education_file_map?: Record<string, number[]>
+  company_file_map?: Record<string, number[]>
+  files?: {
+    profile_image?: File | null
+    aadhaar_copy?: File | null
+    pan_copy?: File | null
+    bank_proof?: File | null
+    education_marksheets?: File[]
+    experience_proofs?: File[]
+  }
 }
 
 export type UserListFilters = {
@@ -134,8 +222,83 @@ const normalizeUser = (value: unknown): User | null => {
     number: (obj.number as string | null | undefined) ?? null,
     father_name: (obj.father_name as string | null | undefined) ?? null,
     mother_name: (obj.mother_name as string | null | undefined) ?? null,
+    bank_account: normalizeBankAccount(obj.bank_account),
+    educations: normalizeEducations(obj.educations),
+    previous_companies: normalizePreviousCompanies(obj.previous_companies),
+    documents: normalizeDocuments(obj.documents),
     created_at: (obj.created_at as string | null | undefined) ?? null,
   }
+}
+
+const normalizeDocuments = (value: unknown): UserDocument[] => {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const obj = item as Record<string, unknown>
+      const id = toNumberOrNull(obj.id)
+      if (id === null) return null
+      return {
+        id,
+        document_type: String(obj.document_type ?? ''),
+        original_filename: String(obj.original_filename ?? ''),
+        content_type: String(obj.content_type ?? ''),
+        file_size: toNumberOrNull(obj.file_size) ?? 0,
+        created_at: String(obj.created_at ?? ''),
+      }
+    })
+    .filter((doc): doc is UserDocument => doc !== null)
+}
+
+const normalizeBankAccount = (value: unknown): UserBankAccountPayload | null => {
+  if (!value || typeof value !== 'object') return null
+  const obj = value as Record<string, unknown>
+  return {
+    account_holder_name: String(obj.account_holder_name ?? ''),
+    account_number: String(obj.account_number ?? ''),
+    ifsc_code: String(obj.ifsc_code ?? ''),
+    bank_name: String(obj.bank_name ?? ''),
+  }
+}
+
+const normalizeEducations = (value: unknown): UserEducation[] => {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const obj = item as Record<string, unknown>
+      const id = toNumberOrNull(obj.id)
+      if (id === null) return null
+      return {
+        id,
+        degree: String(obj.degree ?? ''),
+        institution: String(obj.institution ?? ''),
+        year_of_passing: toNumberOrNull(obj.year_of_passing),
+        percentage: (obj.percentage as string | number | null | undefined) ?? null,
+        documents: normalizeDocuments(obj.documents),
+      }
+    })
+    .filter((education): education is UserEducation => education !== null)
+}
+
+const normalizePreviousCompanies = (value: unknown): UserPreviousCompany[] => {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const obj = item as Record<string, unknown>
+      const id = toNumberOrNull(obj.id)
+      if (id === null) return null
+      return {
+        id,
+        company_name: String(obj.company_name ?? ''),
+        designation: String(obj.designation ?? ''),
+        start_date: String(obj.start_date ?? ''),
+        end_date: String(obj.end_date ?? ''),
+        documents: normalizeDocuments(obj.documents),
+      }
+    })
+    .filter((company): company is UserPreviousCompany => company !== null)
 }
 
 const normalizeUserList = (value: unknown): User[] => {
@@ -163,11 +326,69 @@ export const userService = {
     return normalizeUserList(data)
   },
 
-  async createUser(payload: CreateUserPayload): Promise<User | null> {
+  async createUser(request: CreateUserRequest): Promise<User | null> {
+    const formData = new FormData()
+    formData.append('payload', JSON.stringify(request.payload))
+    formData.append('education_file_map', JSON.stringify(request.education_file_map ?? {}))
+    formData.append('company_file_map', JSON.stringify(request.company_file_map ?? {}))
+
+    if (request.files?.profile_image) {
+      formData.append('profile_image', request.files.profile_image)
+    }
+    if (request.files?.aadhaar_copy) {
+      formData.append('aadhaar_copy', request.files.aadhaar_copy)
+    }
+    if (request.files?.pan_copy) {
+      formData.append('pan_copy', request.files.pan_copy)
+    }
+    if (request.files?.bank_proof) {
+      formData.append('bank_proof', request.files.bank_proof)
+    }
+    request.files?.education_marksheets?.forEach((file) => formData.append('education_marksheets', file))
+    request.files?.experience_proofs?.forEach((file) => formData.append('experience_proofs', file))
+
     const response = await fetch(`${API_URL}/users`, {
       method: 'POST',
-      headers: authHeaders(true),
-      body: JSON.stringify(payload),
+      headers: authHeaders(false),
+      body: formData,
+    })
+
+    if (handleUnauthorizedResponse(response)) {
+      throw new Error(SESSION_TIMEOUT_MESSAGE)
+    }
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response))
+    }
+
+    const data = (await response.json()) as unknown
+    return normalizeUser(data)
+  },
+
+  async updateUser(id: number, request: UpdateUserRequest): Promise<User | null> {
+    const formData = new FormData()
+    formData.append('payload', JSON.stringify(request.payload))
+    formData.append('education_file_map', JSON.stringify(request.education_file_map ?? {}))
+    formData.append('company_file_map', JSON.stringify(request.company_file_map ?? {}))
+
+    if (request.files?.profile_image) {
+      formData.append('profile_image', request.files.profile_image)
+    }
+    if (request.files?.aadhaar_copy) {
+      formData.append('aadhaar_copy', request.files.aadhaar_copy)
+    }
+    if (request.files?.pan_copy) {
+      formData.append('pan_copy', request.files.pan_copy)
+    }
+    if (request.files?.bank_proof) {
+      formData.append('bank_proof', request.files.bank_proof)
+    }
+    request.files?.education_marksheets?.forEach((file) => formData.append('education_marksheets', file))
+    request.files?.experience_proofs?.forEach((file) => formData.append('experience_proofs', file))
+
+    const response = await fetch(`${API_URL}/users/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(false),
+      body: formData,
     })
 
     if (handleUnauthorizedResponse(response)) {
@@ -216,24 +437,6 @@ export const userService = {
       total: Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length,
       total_pages: Number.isFinite(rawTotalPages) && rawTotalPages >= 0 ? rawTotalPages : 0,
     }
-  },
-
-  async updateUser(id: number, payload: UserPayload): Promise<User | null> {
-    const response = await fetch(`${API_URL}/users/${id}`, {
-      method: 'PUT',
-      headers: authHeaders(true),
-      body: JSON.stringify(payload),
-    })
-
-    if (handleUnauthorizedResponse(response)) {
-      throw new Error(SESSION_TIMEOUT_MESSAGE)
-    }
-    if (!response.ok) {
-      throw new Error(await parseErrorMessage(response))
-    }
-
-    const data = (await response.json()) as unknown
-    return normalizeUser(data)
   },
 
   async deleteUser(id: number): Promise<void> {

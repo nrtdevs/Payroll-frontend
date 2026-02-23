@@ -20,12 +20,13 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
+import { API_URL } from '../config/env'
 import { branchService } from '../services/branchService'
 import { roleService } from '../services/roleService'
 import { userService } from '../services/userService'
 import type { Branch } from '../services/branchService'
 import type { Role } from '../services/roleService'
-import type { CreateUserPayload, User, UserListFilters, UserPayload } from '../services/userService'
+import type { CreateUserPayload, User, UserDocument, UserListFilters, UserPayload } from '../services/userService'
 import CustomAutocomplete, { type CustomAutocompleteOption } from '../components/CustomAutocomplete'
 import CustomInput from '../components/CustomInput'
 import CustomTable, { type CustomTableColumn } from '../components/CustomTable'
@@ -60,6 +61,188 @@ const toNullableNumber = (value: string): number | null => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+type BankAccountForm = {
+  account_holder_name: string
+  account_number: string
+  ifsc_code: string
+  bank_name: string
+}
+
+type EducationForm = {
+  id: string
+  record_key: string
+  degree: string
+  institution: string
+  year_of_passing: string
+  percentage: string
+}
+
+type PreviousCompanyForm = {
+  id: string
+  record_key: string
+  company_name: string
+  designation: string
+  start_date: string
+  end_date: string
+}
+
+type RowFileMap = Record<string, File[]>
+
+const emptyBankAccountForm: BankAccountForm = {
+  account_holder_name: '',
+  account_number: '',
+  ifsc_code: '',
+  bank_name: '',
+}
+
+const createEducationForm = (seq: number): EducationForm => ({
+  id: `edu_row_${seq}`,
+  record_key: `edu_${seq}`,
+  degree: '',
+  institution: '',
+  year_of_passing: '',
+  percentage: '',
+})
+
+const createPreviousCompanyForm = (seq: number): PreviousCompanyForm => ({
+  id: `cmp_row_${seq}`,
+  record_key: `cmp_${seq}`,
+  company_name: '',
+  designation: '',
+  start_date: '',
+  end_date: '',
+})
+
+const isEducationFilled = (form: EducationForm): boolean => {
+  return Boolean(form.degree.trim() || form.institution.trim() || form.year_of_passing.trim() || form.percentage.trim())
+}
+
+const isCompanyFilled = (form: PreviousCompanyForm): boolean => {
+  return Boolean(form.company_name.trim() || form.designation.trim() || form.start_date.trim() || form.end_date.trim())
+}
+
+const getUniqueRecordKey = (raw: string, fallbackPrefix: string, index: number, used: Set<string>): string => {
+  const base = raw.trim() || `${fallbackPrefix}_${index + 1}`
+  if (!used.has(base)) {
+    used.add(base)
+    return base
+  }
+  let suffix = 2
+  while (used.has(`${base}_${suffix}`)) {
+    suffix += 1
+  }
+  const unique = `${base}_${suffix}`
+  used.add(unique)
+  return unique
+}
+
+const getDocumentEndpoint = (userId: number, documentId: number): string => `${API_URL}/users/${userId}/documents/${documentId}`
+
+const formatBytes = (bytes: number): string => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function DocumentCard({ userId, document, label }: { userId: number; document: UserDocument; label?: string }) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewError, setPreviewError] = useState('')
+  const canPreviewImage = document.content_type.toLowerCase().startsWith('image/')
+
+  useEffect(() => {
+    let objectUrl: string | null = null
+    let active = true
+
+    const loadPreview = async () => {
+      if (!canPreviewImage) return
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        if (active) setPreviewError('Auth token missing.')
+        return
+      }
+      try {
+        const response = await fetch(getDocumentEndpoint(userId, document.id), {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!response.ok) {
+          throw new Error(`Preview failed (${response.status})`)
+        }
+        const blob = await response.blob()
+        objectUrl = URL.createObjectURL(blob)
+        if (active) {
+          setPreviewUrl(objectUrl)
+          setPreviewError('')
+        }
+      } catch (error) {
+        if (active) {
+          const message = error instanceof Error ? error.message : 'Preview unavailable.'
+          setPreviewError(message)
+        }
+      }
+    }
+
+    void loadPreview()
+    return () => {
+      active = false
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [userId, document.id, canPreviewImage])
+
+  const onDownload = async () => {
+    const token = localStorage.getItem('auth_token')
+    if (!token) return
+    try {
+      const response = await fetch(getDocumentEndpoint(userId, document.id), {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!response.ok) {
+        throw new Error(`Download failed (${response.status})`)
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = window.document.createElement('a')
+      link.href = url
+      link.download = document.original_filename || `document-${document.id}`
+      window.document.body.appendChild(link)
+      link.click()
+      window.document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch {
+      // ignore here; metadata is still shown
+    }
+  }
+
+  return (
+    <Card variant="outlined">
+      <CardContent className="space-y-2">
+        {label ? (
+          <Typography variant="body2" className="!font-semibold">
+            {label}
+          </Typography>
+        ) : null}
+        <Typography variant="body2">{document.original_filename}</Typography>
+        <Typography variant="caption" color="text.secondary">
+          {document.document_type} | {document.content_type} | {formatBytes(document.file_size)}
+        </Typography>
+        {previewUrl ? (
+          <img src={previewUrl} alt={document.original_filename} className="max-h-64 w-full rounded-lg object-contain bg-slate-100" />
+        ) : null}
+        {canPreviewImage && !previewUrl && previewError ? (
+          <Typography variant="caption" color="warning.main">
+            {previewError}
+          </Typography>
+        ) : null}
+        <Stack direction="row" justifyContent="flex-end">
+          <Button size="small" variant="outlined" onClick={() => void onDownload()}>
+            Download
+          </Button>
+        </Stack>
+      </CardContent>
+    </Card>
+  )
+}
+
 function UsersPage() {
   const { showToast } = useToast()
   const [users, setUsers] = useState<User[]>([])
@@ -76,6 +259,19 @@ function UsersPage() {
   const [viewOpen, setViewOpen] = useState(false)
   const [editingUserId, setEditingUserId] = useState<number | null>(null)
   const [userForm, setUserForm] = useState<CreateUserPayload>(emptyUserForm)
+  const [bankAccountForm, setBankAccountForm] = useState<BankAccountForm>(emptyBankAccountForm)
+
+  const [educationCounter, setEducationCounter] = useState(1)
+  const [companyCounter, setCompanyCounter] = useState(1)
+  const [educationForms, setEducationForms] = useState<EducationForm[]>([createEducationForm(1)])
+  const [previousCompanyForms, setPreviousCompanyForms] = useState<PreviousCompanyForm[]>([createPreviousCompanyForm(1)])
+  const [educationFilesByRowId, setEducationFilesByRowId] = useState<RowFileMap>({})
+  const [companyFilesByRowId, setCompanyFilesByRowId] = useState<RowFileMap>({})
+
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null)
+  const [aadhaarCopyFile, setAadhaarCopyFile] = useState<File | null>(null)
+  const [panCopyFile, setPanCopyFile] = useState<File | null>(null)
+  const [bankProofFile, setBankProofFile] = useState<File | null>(null)
   const [page, setPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [totalUsers, setTotalUsers] = useState(0)
@@ -103,6 +299,21 @@ function UsersPage() {
     { key: 'status', label: 'Status' },
     { key: 'action', label: 'Action', align: 'right' },
   ]
+  const editingUser = editingUserId !== null ? users.find((user) => user.id === editingUserId) ?? null : null
+
+  const resetNestedForms = () => {
+    setBankAccountForm(emptyBankAccountForm)
+    setEducationCounter(1)
+    setCompanyCounter(1)
+    setEducationForms([createEducationForm(1)])
+    setPreviousCompanyForms([createPreviousCompanyForm(1)])
+    setEducationFilesByRowId({})
+    setCompanyFilesByRowId({})
+    setProfileImageFile(null)
+    setAadhaarCopyFile(null)
+    setPanCopyFile(null)
+    setBankProofFile(null)
+  }
 
   const loadUsers = async () => {
     setLoadingUsers(true)
@@ -144,12 +355,78 @@ function UsersPage() {
   const closeCreateModal = () => {
     setCreateOpen(false)
     setUserForm(emptyUserForm)
+    resetNestedForms()
   }
 
   const closeEditModal = () => {
     setEditOpen(false)
     setEditingUserId(null)
     setUserForm(emptyUserForm)
+    resetNestedForms()
+  }
+
+  const buildEducationPayload = () => {
+    const educationFileMap: Record<string, number[]> = {}
+    const educationFiles: File[] = []
+    const usedRecordKeys = new Set<string>()
+
+    const educations = educationForms
+      .filter(isEducationFilled)
+      .map((form, index) => {
+        const recordKey = getUniqueRecordKey(form.record_key, 'edu', index, usedRecordKeys)
+        const rowFiles = educationFilesByRowId[form.id] ?? []
+        if (rowFiles.length > 0) {
+          const start = educationFiles.length
+          educationFiles.push(...rowFiles)
+          educationFileMap[recordKey] = rowFiles.map((_, fileIndex) => start + fileIndex)
+        }
+
+        return {
+          record_key: recordKey,
+          degree: form.degree,
+          institution: form.institution,
+          year_of_passing: toNullableNumber(form.year_of_passing),
+          percentage: toNullableNumber(form.percentage),
+        }
+      })
+
+    return {
+      educations,
+      education_file_map: educationFileMap,
+      education_marksheets: educationFiles,
+    }
+  }
+
+  const buildCompanyPayload = () => {
+    const companyFileMap: Record<string, number[]> = {}
+    const companyFiles: File[] = []
+    const usedRecordKeys = new Set<string>()
+
+    const previous_companies = previousCompanyForms
+      .filter(isCompanyFilled)
+      .map((form, index) => {
+        const recordKey = getUniqueRecordKey(form.record_key, 'cmp', index, usedRecordKeys)
+        const rowFiles = companyFilesByRowId[form.id] ?? []
+        if (rowFiles.length > 0) {
+          const start = companyFiles.length
+          companyFiles.push(...rowFiles)
+          companyFileMap[recordKey] = rowFiles.map((_, fileIndex) => start + fileIndex)
+        }
+
+        return {
+          record_key: recordKey,
+          company_name: form.company_name,
+          designation: form.designation,
+          start_date: form.start_date,
+          end_date: form.end_date,
+        }
+      })
+
+    return {
+      previous_companies,
+      company_file_map: companyFileMap,
+      experience_proofs: companyFiles,
+    }
   }
 
   const onCreateSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -157,7 +434,7 @@ function UsersPage() {
     setSubmittingUser(true)
     setUserError('')
     try {
-      const createPayload: CreateUserPayload = {
+      const payload: CreateUserPayload = {
         name: userForm.name,
         branch_id: userForm.branch_id,
         role_id: userForm.role_id,
@@ -175,8 +452,31 @@ function UsersPage() {
         password: userForm.password,
         father_name: userForm.father_name,
         mother_name: userForm.mother_name,
+        business_id: userForm.business_id,
       }
-      await userService.createUser(createPayload)
+
+      const educationSubmission = buildEducationPayload()
+      const companySubmission = buildCompanyPayload()
+
+      await userService.createUser({
+        payload: {
+          ...payload,
+          bank_account: { ...bankAccountForm },
+          educations: educationSubmission.educations,
+          previous_companies: companySubmission.previous_companies,
+        },
+        education_file_map: educationSubmission.education_file_map,
+        company_file_map: companySubmission.company_file_map,
+        files: {
+          profile_image: profileImageFile,
+          aadhaar_copy: aadhaarCopyFile,
+          pan_copy: panCopyFile,
+          bank_proof: bankProofFile,
+          education_marksheets: educationSubmission.education_marksheets,
+          experience_proofs: companySubmission.experience_proofs,
+        },
+      })
+
       closeCreateModal()
       showToast('User created successfully.', 'success')
       await loadUsers()
@@ -195,7 +495,7 @@ function UsersPage() {
     setSubmittingUser(true)
     setUserError('')
     try {
-      const updatePayload: UserPayload = {
+      const payload: UserPayload = {
         name: userForm.name,
         branch_id: userForm.branch_id,
         role_id: userForm.role_id,
@@ -212,8 +512,31 @@ function UsersPage() {
         email: userForm.email,
         father_name: userForm.father_name,
         mother_name: userForm.mother_name,
+        business_id: userForm.business_id,
       }
-      await userService.updateUser(editingUserId, updatePayload)
+
+      const educationSubmission = buildEducationPayload()
+      const companySubmission = buildCompanyPayload()
+
+      await userService.updateUser(editingUserId, {
+        payload: {
+          ...payload,
+          bank_account: { ...bankAccountForm },
+          educations: educationSubmission.educations,
+          previous_companies: companySubmission.previous_companies,
+        },
+        education_file_map: educationSubmission.education_file_map,
+        company_file_map: companySubmission.company_file_map,
+        files: {
+          profile_image: profileImageFile,
+          aadhaar_copy: aadhaarCopyFile,
+          pan_copy: panCopyFile,
+          bank_proof: bankProofFile,
+          education_marksheets: educationSubmission.education_marksheets,
+          experience_proofs: companySubmission.experience_proofs,
+        },
+      })
+
       closeEditModal()
       showToast('User updated successfully.', 'success')
       await loadUsers()
@@ -248,6 +571,50 @@ function UsersPage() {
       mother_name: user.mother_name || '',
       business_id: user.business_id ?? null,
     })
+    const nextBankAccount: BankAccountForm = user.bank_account
+      ? {
+          account_holder_name: user.bank_account.account_holder_name || '',
+          account_number: user.bank_account.account_number || '',
+          ifsc_code: user.bank_account.ifsc_code || '',
+          bank_name: user.bank_account.bank_name || '',
+        }
+      : emptyBankAccountForm
+
+    const nextEducations: EducationForm[] =
+      user.educations && user.educations.length > 0
+        ? user.educations.map((education, index) => ({
+            id: `edu_existing_${education.id}`,
+            record_key: `edu_${index + 1}`,
+            degree: education.degree || '',
+            institution: education.institution || '',
+            year_of_passing: education.year_of_passing !== null && education.year_of_passing !== undefined ? String(education.year_of_passing) : '',
+            percentage: education.percentage !== null && education.percentage !== undefined ? String(education.percentage) : '',
+          }))
+        : [createEducationForm(1)]
+
+    const nextCompanies: PreviousCompanyForm[] =
+      user.previous_companies && user.previous_companies.length > 0
+        ? user.previous_companies.map((company, index) => ({
+            id: `cmp_existing_${company.id}`,
+            record_key: `cmp_${index + 1}`,
+            company_name: company.company_name || '',
+            designation: company.designation || '',
+            start_date: company.start_date || '',
+            end_date: company.end_date || '',
+          }))
+        : [createPreviousCompanyForm(1)]
+
+    setBankAccountForm(nextBankAccount)
+    setEducationForms(nextEducations)
+    setPreviousCompanyForms(nextCompanies)
+    setEducationCounter(nextEducations.length)
+    setCompanyCounter(nextCompanies.length)
+    setEducationFilesByRowId({})
+    setCompanyFilesByRowId({})
+    setProfileImageFile(null)
+    setAadhaarCopyFile(null)
+    setPanCopyFile(null)
+    setBankProofFile(null)
     setEditOpen(true)
   }
 
@@ -375,8 +742,336 @@ function UsersPage() {
         onChange={(e) => setUserForm((p) => ({ ...p, home_address: e.target.value }))}
         required
       />
+      <CustomInput
+        label="Business ID"
+        type="number"
+        value={userForm.business_id ?? ''}
+        onChange={(e) => setUserForm((p) => ({ ...p, business_id: toNullableNumber(e.target.value) }))}
+      />
     </div>
   )
+
+  const nestedFields = () => (
+    <>
+      <Typography variant="subtitle1" className="!font-semibold">
+        Bank Account
+      </Typography>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <CustomInput
+          label="Account Holder Name"
+          value={bankAccountForm.account_holder_name}
+          onChange={(e) => setBankAccountForm((p) => ({ ...p, account_holder_name: e.target.value }))}
+          required
+        />
+        <CustomInput
+          label="Account Number"
+          value={bankAccountForm.account_number}
+          onChange={(e) => setBankAccountForm((p) => ({ ...p, account_number: e.target.value }))}
+          required
+        />
+        <CustomInput
+          label="IFSC Code"
+          value={bankAccountForm.ifsc_code}
+          onChange={(e) => setBankAccountForm((p) => ({ ...p, ifsc_code: e.target.value }))}
+          required
+        />
+        <CustomInput
+          label="Bank Name"
+          value={bankAccountForm.bank_name}
+          onChange={(e) => setBankAccountForm((p) => ({ ...p, bank_name: e.target.value }))}
+          required
+        />
+      </div>
+
+      <Stack direction="row" justifyContent="space-between" alignItems="center" className="!pt-1">
+        <Typography variant="subtitle1" className="!font-semibold">
+          Educations
+        </Typography>
+        <Button
+          type="button"
+          variant="outlined"
+          startIcon={<AddRoundedIcon />}
+          onClick={() => {
+            const next = educationCounter + 1
+            setEducationCounter(next)
+            setEducationForms((prev) => [...prev, createEducationForm(next)])
+          }}
+        >
+          Add Education
+        </Button>
+      </Stack>
+
+      {educationForms.map((education, index) => (
+        <Card key={education.id} variant="outlined">
+          <CardContent className="!pb-4">
+            <Stack direction="row" justifyContent="space-between" alignItems="center" className="!mb-3">
+              <Typography variant="subtitle2">Education #{index + 1}</Typography>
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => {
+                  setEducationForms((prev) => prev.filter((item) => item.id !== education.id))
+                  setEducationFilesByRowId((prev) => {
+                    const next = { ...prev }
+                    delete next[education.id]
+                    return next
+                  })
+                }}
+              >
+                <DeleteRoundedIcon />
+              </IconButton>
+            </Stack>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <CustomInput
+                label="Record Key"
+                value={education.record_key}
+                onChange={(e) =>
+                  setEducationForms((prev) => prev.map((item) => (item.id === education.id ? { ...item, record_key: e.target.value } : item)))
+                }
+              />
+              <CustomInput
+                label="Degree"
+                value={education.degree}
+                onChange={(e) =>
+                  setEducationForms((prev) => prev.map((item) => (item.id === education.id ? { ...item, degree: e.target.value } : item)))
+                }
+              />
+              <CustomInput
+                label="Institution"
+                value={education.institution}
+                onChange={(e) =>
+                  setEducationForms((prev) => prev.map((item) => (item.id === education.id ? { ...item, institution: e.target.value } : item)))
+                }
+              />
+              <CustomInput
+                label="Year Of Passing"
+                type="number"
+                value={education.year_of_passing}
+                onChange={(e) =>
+                  setEducationForms((prev) => prev.map((item) => (item.id === education.id ? { ...item, year_of_passing: e.target.value } : item)))
+                }
+              />
+              <CustomInput
+                label="Percentage"
+                type="number"
+                value={education.percentage}
+                onChange={(e) =>
+                  setEducationForms((prev) => prev.map((item) => (item.id === education.id ? { ...item, percentage: e.target.value } : item)))
+                }
+              />
+              <CustomInput
+                label="Education Files"
+                type="file"
+                value={undefined}
+                onChange={(event) =>
+                  setEducationFilesByRowId((prev) => ({
+                    ...prev,
+                    [education.id]: event.target.files ? Array.from(event.target.files) : [],
+                  }))
+                }
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ multiple: true }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
+      <Stack direction="row" justifyContent="space-between" alignItems="center" className="!pt-1">
+        <Typography variant="subtitle1" className="!font-semibold">
+          Previous Companies
+        </Typography>
+        <Button
+          type="button"
+          variant="outlined"
+          startIcon={<AddRoundedIcon />}
+          onClick={() => {
+            const next = companyCounter + 1
+            setCompanyCounter(next)
+            setPreviousCompanyForms((prev) => [...prev, createPreviousCompanyForm(next)])
+          }}
+        >
+          Add Company
+        </Button>
+      </Stack>
+
+      {previousCompanyForms.map((company, index) => (
+        <Card key={company.id} variant="outlined">
+          <CardContent className="!pb-4">
+            <Stack direction="row" justifyContent="space-between" alignItems="center" className="!mb-3">
+              <Typography variant="subtitle2">Company #{index + 1}</Typography>
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => {
+                  setPreviousCompanyForms((prev) => prev.filter((item) => item.id !== company.id))
+                  setCompanyFilesByRowId((prev) => {
+                    const next = { ...prev }
+                    delete next[company.id]
+                    return next
+                  })
+                }}
+              >
+                <DeleteRoundedIcon />
+              </IconButton>
+            </Stack>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <CustomInput
+                label="Record Key"
+                value={company.record_key}
+                onChange={(e) =>
+                  setPreviousCompanyForms((prev) => prev.map((item) => (item.id === company.id ? { ...item, record_key: e.target.value } : item)))
+                }
+              />
+              <CustomInput
+                label="Company Name"
+                value={company.company_name}
+                onChange={(e) =>
+                  setPreviousCompanyForms((prev) => prev.map((item) => (item.id === company.id ? { ...item, company_name: e.target.value } : item)))
+                }
+              />
+              <CustomInput
+                label="Designation"
+                value={company.designation}
+                onChange={(e) =>
+                  setPreviousCompanyForms((prev) => prev.map((item) => (item.id === company.id ? { ...item, designation: e.target.value } : item)))
+                }
+              />
+              <CustomInput
+                label="Start Date"
+                type="date"
+                value={company.start_date}
+                onChange={(e) =>
+                  setPreviousCompanyForms((prev) => prev.map((item) => (item.id === company.id ? { ...item, start_date: e.target.value } : item)))
+                }
+                InputLabelProps={{ shrink: true }}
+              />
+              <CustomInput
+                label="End Date"
+                type="date"
+                value={company.end_date}
+                onChange={(e) =>
+                  setPreviousCompanyForms((prev) => prev.map((item) => (item.id === company.id ? { ...item, end_date: e.target.value } : item)))
+                }
+                InputLabelProps={{ shrink: true }}
+              />
+              <CustomInput
+                label="Experience Proofs"
+                type="file"
+                value={undefined}
+                onChange={(event) =>
+                  setCompanyFilesByRowId((prev) => ({
+                    ...prev,
+                    [company.id]: event.target.files ? Array.from(event.target.files) : [],
+                  }))
+                }
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ multiple: true }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
+      <Typography variant="subtitle1" className="!font-semibold !pt-1">
+        General Documents
+      </Typography>
+      {editingUser?.documents && editingUser.documents.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {editingUser.documents.map((document) => (
+            <DocumentCard key={`edit-doc-${document.id}`} userId={editingUser.id} document={document} />
+          ))}
+        </div>
+      ) : null}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <CustomInput
+          label="Profile Image"
+          type="file"
+          value={undefined}
+          onChange={(event) => setProfileImageFile(event.target.files?.[0] ?? null)}
+          InputLabelProps={{ shrink: true }}
+          inputProps={{ accept: 'image/*' }}
+        />
+        <CustomInput
+          label="Aadhaar Copy"
+          type="file"
+          value={undefined}
+          onChange={(event) => setAadhaarCopyFile(event.target.files?.[0] ?? null)}
+          InputLabelProps={{ shrink: true }}
+        />
+        <CustomInput
+          label="PAN Copy"
+          type="file"
+          value={undefined}
+          onChange={(event) => setPanCopyFile(event.target.files?.[0] ?? null)}
+          InputLabelProps={{ shrink: true }}
+        />
+        <CustomInput
+          label="Bank Proof"
+          type="file"
+          value={undefined}
+          onChange={(event) => setBankProofFile(event.target.files?.[0] ?? null)}
+          InputLabelProps={{ shrink: true }}
+        />
+      </div>
+
+      {editingUser?.educations?.some((education) => education.documents.length > 0) ? (
+        <>
+          <Typography variant="subtitle1" className="!font-semibold !pt-1">
+            Existing Education Documents
+          </Typography>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {editingUser.educations.flatMap((education, index) =>
+              education.documents.map((document) => (
+                <DocumentCard
+                  key={`edit-edu-doc-${document.id}`}
+                  userId={editingUser.id}
+                  document={document}
+                  label={`Education ${index + 1}: ${education.degree || education.institution || 'Record'}`}
+                />
+              )),
+            )}
+          </div>
+        </>
+      ) : null}
+
+      {editingUser?.previous_companies?.some((company) => company.documents.length > 0) ? (
+        <>
+          <Typography variant="subtitle1" className="!font-semibold !pt-1">
+            Existing Experience Documents
+          </Typography>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {editingUser.previous_companies.flatMap((company, index) =>
+              company.documents.map((document) => (
+                <DocumentCard
+                  key={`edit-cmp-doc-${document.id}`}
+                  userId={editingUser.id}
+                  document={document}
+                  label={`Company ${index + 1}: ${company.company_name || company.designation || 'Record'}`}
+                />
+              )),
+            )}
+          </div>
+        </>
+      ) : null}
+    </>
+  )
+
+  const selectedEducationDocs =
+    selectedUser?.educations?.flatMap((education, index) =>
+      education.documents.map((document) => ({
+        document,
+        label: `Education ${index + 1}: ${education.degree || education.institution || 'Record'}`,
+      })),
+    ) ?? []
+
+  const selectedCompanyDocs =
+    selectedUser?.previous_companies?.flatMap((company, index) =>
+      company.documents.map((document) => ({
+        document,
+        label: `Company ${index + 1}: ${company.company_name || company.designation || 'Record'}`,
+      })),
+    ) ?? []
 
   if (loadingUsers && users.length === 0) {
     return <CustomLoader fullscreen label="Loading users..." />
@@ -493,6 +1188,7 @@ function UsersPage() {
           <Box component="form" onSubmit={onCreateSubmit} className="space-y-4 pt-1">
             {loadingFormOptions ? <CustomLoader label="Loading branches and roles..." /> : null}
             {userFormFields(true)}
+            {nestedFields()}
             <Stack direction="row" justifyContent="flex-end" spacing={1}>
               <Button variant="outlined" onClick={closeCreateModal}>
                 Cancel
@@ -511,6 +1207,7 @@ function UsersPage() {
           <Box component="form" onSubmit={onEditSubmit} className="space-y-4 pt-1">
             {loadingFormOptions ? <CustomLoader label="Loading branches and roles..." /> : null}
             {userFormFields(false)}
+            {nestedFields()}
             <Stack direction="row" justifyContent="flex-end" spacing={1}>
               <Button variant="outlined" onClick={closeEditModal}>
                 Cancel
@@ -526,7 +1223,69 @@ function UsersPage() {
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="md">
         <DialogTitle>User Detail</DialogTitle>
         <DialogContent>
-          <pre className="m-0 overflow-x-auto rounded-xl bg-slate-900 p-4 text-sm text-slate-100">{JSON.stringify(selectedUser, null, 2)}</pre>
+          {selectedUser ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <Typography variant="body2">
+                  <strong>Name:</strong> {selectedUser.name || '-'}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Email:</strong> {selectedUser.email || '-'}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Role:</strong> {selectedUser.role || '-'}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Status:</strong> {selectedUser.status || '-'}
+                </Typography>
+              </div>
+
+              <Typography variant="subtitle1" className="!font-semibold">
+                General Documents
+              </Typography>
+              {selectedUser.documents && selectedUser.documents.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {selectedUser.documents.map((document) => (
+                    <DocumentCard key={`doc-${document.id}`} userId={selectedUser.id} document={document} />
+                  ))}
+                </div>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No general documents.
+                </Typography>
+              )}
+
+              <Typography variant="subtitle1" className="!font-semibold">
+                Education Documents
+              </Typography>
+              {selectedEducationDocs.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {selectedEducationDocs.map(({ document, label }) => (
+                    <DocumentCard key={`edu-doc-${document.id}`} userId={selectedUser.id} document={document} label={label} />
+                  ))}
+                </div>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No education documents.
+                </Typography>
+              )}
+
+              <Typography variant="subtitle1" className="!font-semibold">
+                Experience Documents
+              </Typography>
+              {selectedCompanyDocs.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {selectedCompanyDocs.map(({ document, label }) => (
+                    <DocumentCard key={`cmp-doc-${document.id}`} userId={selectedUser.id} document={document} label={label} />
+                  ))}
+                </div>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No experience documents.
+                </Typography>
+              )}
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

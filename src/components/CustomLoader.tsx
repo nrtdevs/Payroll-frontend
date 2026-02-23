@@ -1,7 +1,9 @@
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { keyframes } from '@mui/material/styles'
+import { alpha, keyframes } from '@mui/material/styles'
+import { useContext } from 'react'
+import { ColorModeContext } from '../context/colorMode'
 
 type CustomLoaderProps = {
   size?: number | string
@@ -23,6 +25,10 @@ const rotateFrame = keyframes`
 
 function CustomLoader({ size = 60, label, color = '#524656', fullscreen = false, center = false }: CustomLoaderProps) {
   const indicatorSize = typeof size === 'number' ? size : 60
+  const { mode } = useContext(ColorModeContext)
+  const isDark = mode === 'dark'
+  const dotColor = isDark ? '#67e8f9' : '#0f766e'
+  const ringColor = color === '#524656' ? (isDark ? '#93c5fd' : '#0f4c81') : color
 
   const loaderContent = (
     <Stack direction="column" alignItems="center" spacing={1.2}>
@@ -38,14 +44,14 @@ function CustomLoader({ size = 60, label, color = '#524656', fullscreen = false,
             inset: 'auto 35% 0',
             aspectRatio: '1 / 1',
             borderRadius: '50%',
-            background: '#CF4647',
+            background: dotColor,
             animation: `${bounceDot} .5s cubic-bezier(0,800,1,800) infinite`,
           },
           '&::after': {
             content: '""',
             position: 'absolute',
             inset: 0,
-            outline: `3px solid ${color}`,
+            outline: `3px solid ${ringColor}`,
             animation: `${rotateFrame} .5s linear infinite`,
           },
         }}
@@ -66,7 +72,7 @@ function CustomLoader({ size = 60, label, color = '#524656', fullscreen = false,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'rgba(248,250,252,0.72)',
+          background: alpha(isDark ? '#020617' : '#f8fafc', isDark ? 0.72 : 0.74),
           backdropFilter: 'blur(2px)',
         }}
       >

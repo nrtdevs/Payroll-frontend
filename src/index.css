@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+:root {
+  --app-bg: #f3f7fb;
+  --app-scroll-thumb: #94a3b8;
+  --app-scroll-track: #dbe6f2;
+}
+
+[data-color-mode="dark"] {
+  --app-bg: #071018;
+  --app-scroll-thumb: #334155;
+  --app-scroll-track: #0f172a;
+}
+
 html,
 body,
 #root {
@@ -9,7 +21,7 @@ body,
 body {
   margin: 0;
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
-  background: #f1f5f9;
+  background: var(--app-bg);
 }
 
 * {
@@ -22,10 +34,10 @@ body {
 }
 
 .app-scrollbar::-webkit-scrollbar-thumb {
-  background: #94a3b8;
+  background: var(--app-scroll-thumb);
   border-radius: 999px;
 }
 
 .app-scrollbar::-webkit-scrollbar-track {
-  background: #e2e8f0;
+  background: var(--app-scroll-track);
 }

@@ -70,7 +70,11 @@ function CustomInput({
   return (
     <Box>
       {hasLabel ? (
-        <FormLabel htmlFor={fieldId} required={required} className="!mb-1 !block !text-sm !font-medium !text-slate-700">
+        <FormLabel
+          htmlFor={fieldId}
+          required={required}
+          sx={{ mb: 1, display: 'block', fontSize: 14, fontWeight: 600, color: 'text.secondary' }}
+        >
           {label}
         </FormLabel>
       ) : null}

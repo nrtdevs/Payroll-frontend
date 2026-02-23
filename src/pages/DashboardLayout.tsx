@@ -22,6 +22,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
@@ -97,6 +98,16 @@ function DashboardLayout() {
   )
   const sidebarExpanded = isDesktop ? desktopPinned || desktopHovered : true
   const sidebarWidth = isDesktop ? (sidebarExpanded ? expandedWidth : collapsedWidth) : expandedWidth
+  const isDark = mode === 'dark'
+  const navTextColor = isDark ? '#e2e8f0' : '#0f172a'
+  const navMutedText = isDark ? '#94a3b8' : '#475569'
+  const navIconColor = isDark ? '#cbd5e1' : '#334155'
+  const navActiveText = theme.palette.primary.main
+  const navActiveBg = alpha(theme.palette.primary.main, isDark ? 0.22 : 0.14)
+  const navHoverBg = isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(15, 23, 42, 0.08)'
+  const sidebarGradient = isDark
+    ? 'linear-gradient(180deg, #0b1622 0%, #0f2135 48%, #0a1522 100%)'
+    : 'linear-gradient(180deg, #f8fdff 0%, #edf6ff 55%, #e6f2ff 100%)'
 
   const pageTitle =
     (location.pathname.startsWith('/role-edit/') || location.pathname.startsWith('/dashboard/role-edit/')
@@ -135,18 +146,19 @@ function DashboardLayout() {
 
   const sidebarContent = (
     <Box
-      className="h-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-slate-100"
+      className="h-full"
+      sx={{ color: navTextColor, background: sidebarGradient }}
       onMouseEnter={() => setDesktopHovered(true)}
       onMouseLeave={() => setDesktopHovered(false)}
     >
       <Stack direction="row" alignItems="center" spacing={1.2} className="px-3 pt-4 pb-3">
-        <Avatar className="!bg-cyan-500 !text-slate-900 !font-bold">CL</Avatar>
+        <Avatar sx={{ bgcolor: theme.palette.primary.main, color: isDark ? '#06201e' : '#f8fafc', fontWeight: 800 }}>CL</Avatar>
         {sidebarExpanded ? (
           <Box className="min-w-0 flex-1">
             <Typography variant="subtitle1" className="!font-semibold !leading-tight">
               Company Ltd
             </Typography>
-            <Typography variant="caption" className="!text-slate-400">
+            <Typography variant="caption" sx={{ color: navMutedText }}>
               Admin Console
             </Typography>
           </Box>
@@ -158,7 +170,7 @@ function DashboardLayout() {
         ) : null}
       </Stack>
 
-      <Divider className="!border-slate-700" />
+      <Divider sx={{ borderColor: alpha(navTextColor, 0.2) }} />
 
       <List className="app-scrollbar px-2 py-3">
         {visibleMenuItems.map((item) => {
@@ -175,13 +187,19 @@ function DashboardLayout() {
                 }
                 navigate(item.path)
               }}
-              className={`!mb-1 !rounded-xl ${active ? '!bg-cyan-500/15' : '!bg-transparent hover:!bg-slate-700/70'}`}
+              className="!mb-1 !rounded-xl"
+              sx={{
+                bgcolor: active ? navActiveBg : 'transparent',
+                '&:hover': { bgcolor: active ? navActiveBg : navHoverBg },
+              }}
             >
-              <ListItemIcon className={`!min-w-10 ${active ? '!text-cyan-300' : '!text-slate-300'}`}>{item.icon}</ListItemIcon>
+              <ListItemIcon className="!min-w-10" sx={{ color: active ? navActiveText : navIconColor }}>
+                {item.icon}
+              </ListItemIcon>
               {sidebarExpanded ? (
                 <ListItemText
                   primary={item.label}
-                  primaryTypographyProps={{ fontSize: 14, fontWeight: active ? 700 : 500, color: active ? '#67e8f9' : '#e2e8f0' }}
+                  primaryTypographyProps={{ fontSize: 14, fontWeight: active ? 700 : 500, color: active ? navActiveText : navTextColor }}
                 />
               ) : null}
             </ListItemButton>
@@ -192,19 +210,19 @@ function DashboardLayout() {
           <>
             <ListItemButton
               onClick={() => setMasterOpen((prev) => !prev)}
-              className={`!mb-1 !rounded-xl ${
-                visibleMasterChildren.some((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))
-                  ? '!bg-cyan-500/15'
-                  : '!bg-transparent hover:!bg-slate-700/70'
-              }`}
+              className="!mb-1 !rounded-xl"
+              sx={{
+                bgcolor: isMasterRouteActive ? navActiveBg : 'transparent',
+                '&:hover': { bgcolor: isMasterRouteActive ? navActiveBg : navHoverBg },
+              }}
             >
-              <ListItemIcon className="!min-w-10 !text-slate-300">
+              <ListItemIcon className="!min-w-10" sx={{ color: navIconColor }}>
                 <SettingsRoundedIcon />
               </ListItemIcon>
               {sidebarExpanded ? (
                 <>
-                  <ListItemText primary="Master" primaryTypographyProps={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0' }} />
-                  {masterOpen ? <ExpandLessRoundedIcon className="!text-slate-300" /> : <ExpandMoreRoundedIcon className="!text-slate-300" />}
+                  <ListItemText primary="Master" primaryTypographyProps={{ fontSize: 14, fontWeight: 600, color: navTextColor }} />
+                  {masterOpen ? <ExpandLessRoundedIcon sx={{ color: navIconColor }} /> : <ExpandMoreRoundedIcon sx={{ color: navIconColor }} />}
                 </>
               ) : null}
             </ListItemButton>
@@ -220,14 +238,18 @@ function DashboardLayout() {
                         setMobileOpen(false)
                         navigate(item.path)
                       }}
-                      className={`!mb-1 !ml-4 !rounded-xl ${
-                        active ? '!bg-cyan-500/15' : '!bg-transparent hover:!bg-slate-700/70'
-                      }`}
+                      className="!mb-1 !ml-4 !rounded-xl"
+                      sx={{
+                        bgcolor: active ? navActiveBg : 'transparent',
+                        '&:hover': { bgcolor: active ? navActiveBg : navHoverBg },
+                      }}
                     >
-                      <ListItemIcon className={`!min-w-10 ${active ? '!text-cyan-300' : '!text-slate-300'}`}>{item.icon}</ListItemIcon>
+                      <ListItemIcon className="!min-w-10" sx={{ color: active ? navActiveText : navIconColor }}>
+                        {item.icon}
+                      </ListItemIcon>
                       <ListItemText
                         primary={item.label}
-                        primaryTypographyProps={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? '#67e8f9' : '#e2e8f0' }}
+                        primaryTypographyProps={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? navActiveText : navTextColor }}
                       />
                     </ListItemButton>
                   )
@@ -275,7 +297,7 @@ function DashboardLayout() {
           className="backdrop-blur"
           sx={{
             borderBottom: `1px solid ${theme.palette.divider}`,
-            bgcolor: mode === 'dark' ? 'rgba(17, 24, 39, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+            bgcolor: alpha(theme.palette.background.paper, 0.88),
           }}
         >
           <Toolbar className="!min-h-16 !px-3 sm:!px-5">
@@ -295,7 +317,10 @@ function DashboardLayout() {
               </Tooltip>
               <Tooltip title="Profile">
                 <IconButton color="primary" onClick={onOpenProfileMenu}>
-                  <Avatar className="!h-8 !w-8 !bg-cyan-600 !text-sm !font-semibold">
+                  <Avatar
+                    className="!h-8 !w-8 !text-sm !font-semibold"
+                    sx={{ bgcolor: theme.palette.primary.main, color: isDark ? '#06201e' : '#f8fafc' }}
+                  >
                     {(userName || 'U').trim().charAt(0).toUpperCase()}
                   </Avatar>
                 </IconButton>
