@@ -28,6 +28,7 @@ import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded'
 import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
+import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
@@ -45,6 +46,7 @@ import useAuth from '../context/useAuth'
 const primaryMenuItems = [
   { label: 'Overview', path: '/dashboard', icon: <DashboardRoundedIcon />, permission: null },
   { label: 'Users', path: '/user', icon: <GroupRoundedIcon />, permission: 'LIST_USER' },
+  { label: 'Attendance', path: '/attendance', icon: <AccessTimeRoundedIcon />, permission: null },
 ] as const
 
 const masterMenuChildren = [

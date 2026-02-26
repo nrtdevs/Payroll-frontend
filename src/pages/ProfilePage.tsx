@@ -1,9 +1,12 @@
 import { Avatar, Button, Card, CardContent, Chip, Divider, Grid, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { useContext, useEffect, useMemo, useState } from 'react'
+import type { ChangeEvent } from 'react'
 import { API_URL } from '../config/env'
 import useAuth from '../context/useAuth'
 import { ColorModeContext } from '../context/colorMode'
+import useToast from '../context/useToast'
+import { faceService } from '../services/faceService'
 import { userService } from '../services/userService'
 import type { User, UserDocument } from '../services/userService'
 
@@ -114,9 +117,12 @@ function ProfileDocumentCard({ userId, document, label }: { userId: number; docu
 function ProfilePage() {
   const { authState } = useAuth()
   const { mode } = useContext(ColorModeContext)
+  const { showToast } = useToast()
   const user = authState.user
   const isDark = mode === 'dark'
   const [detailedUser, setDetailedUser] = useState<User | null>(null)
+  const [faceImageFile, setFaceImageFile] = useState<File | null>(null)
+  const [isEnrollingFace, setIsEnrollingFace] = useState(false)
 
   useEffect(() => {
     const loadCurrentUser = async () => {
@@ -197,6 +203,34 @@ function ProfilePage() {
     [detailedUser?.previous_companies],
   )
 
+  const onSelectFaceImage = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null
+    setFaceImageFile(file)
+  }
+
+  const onEnrollFace = async () => {
+    if (!faceImageFile) {
+      showToast('Please select an image before uploading.', 'error')
+      return
+    }
+    if (!faceImageFile.type.toLowerCase().startsWith('image/')) {
+      showToast('Only image files are allowed for face enrollment.', 'error')
+      return
+    }
+
+    setIsEnrollingFace(true)
+    try {
+      const message = await faceService.enrollFace(faceImageFile)
+      showToast(message || 'Face enrolled successfully.', 'success')
+      setFaceImageFile(null)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to enroll face.'
+      showToast(message, 'error')
+    } finally {
+      setIsEnrollingFace(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden !rounded-2xl">
@@ -272,6 +306,30 @@ function ProfilePage() {
               </Grid>
             ))}
           </Grid>
+        </CardContent>
+      </Card>
+
+      <Card className="!rounded-2xl">
+        <CardContent className="space-y-4">
+          <Typography variant="h6" className="!font-semibold">
+            Face Enrollment For Attendance
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Upload your selfie to enroll your face for attendance recognition.
+          </Typography>
+          <Divider />
+          <Stack spacing={2} direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'stretch', md: 'center' }}>
+            <Button variant="outlined" component="label" disabled={isEnrollingFace}>
+              Choose Image
+              <input hidden type="file" accept="image/*" onChange={onSelectFaceImage} />
+            </Button>
+            <Typography variant="body2" color="text.secondary">
+              {faceImageFile ? faceImageFile.name : 'No file selected.'}
+            </Typography>
+            <Button variant="contained" onClick={() => void onEnrollFace()} disabled={!faceImageFile || isEnrollingFace}>
+              {isEnrollingFace ? 'Uploading...' : 'Upload For Face Enrollment'}
+            </Button>
+          </Stack>
         </CardContent>
       </Card>
 

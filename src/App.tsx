@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import BranchesPage from './pages/BranchesPage'
+import AttendancePage from './pages/AttendancePage'
 import DashboardLayout from './pages/DashboardLayout'
 import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
@@ -52,6 +53,8 @@ function App() {
       >
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="branch" element={<BranchesPage />} />
+        <Route path="attendance" element={<AttendancePage />} />
+        <Route path="attendense" element={<Navigate to="/attendance" replace />} />
         <Route path="role" element={<RolesPage />} />
         <Route path="role-edit/:roleId" element={<RoleEditPage />} />
         <Route path="user" element={<UsersPage />} />
@@ -68,6 +71,8 @@ function App() {
         <Route path="dashboard/users" element={<Navigate to="/user" replace />} />
         <Route path="dashboard/permission" element={<Navigate to="/permission" replace />} />
         <Route path="dashboard/permissions" element={<Navigate to="/permission" replace />} />
+        <Route path="dashboard/attendance" element={<Navigate to="/attendance" replace />} />
+        <Route path="dashboard/attendense" element={<Navigate to="/attendance" replace />} />
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

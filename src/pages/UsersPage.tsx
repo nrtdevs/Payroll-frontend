@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import {
   Alert,
   Box,
@@ -16,6 +16,7 @@ import {
   Typography,
 } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
@@ -70,6 +71,7 @@ type BankAccountForm = {
 
 type EducationForm = {
   id: string
+  source_id: number | null
   record_key: string
   degree: string
   institution: string
@@ -79,6 +81,7 @@ type EducationForm = {
 
 type PreviousCompanyForm = {
   id: string
+  source_id: number | null
   record_key: string
   company_name: string
   designation: string
@@ -87,6 +90,7 @@ type PreviousCompanyForm = {
 }
 
 type RowFileMap = Record<string, File[]>
+type GeneralDocumentFieldKey = 'profile_image' | 'aadhaar_copy' | 'pan_copy' | 'bank_proof'
 
 const emptyBankAccountForm: BankAccountForm = {
   account_holder_name: '',
@@ -97,6 +101,7 @@ const emptyBankAccountForm: BankAccountForm = {
 
 const createEducationForm = (seq: number): EducationForm => ({
   id: `edu_row_${seq}`,
+  source_id: null,
   record_key: `edu_${seq}`,
   degree: '',
   institution: '',
@@ -106,6 +111,7 @@ const createEducationForm = (seq: number): EducationForm => ({
 
 const createPreviousCompanyForm = (seq: number): PreviousCompanyForm => ({
   id: `cmp_row_${seq}`,
+  source_id: null,
   record_key: `cmp_${seq}`,
   company_name: '',
   designation: '',
@@ -137,12 +143,45 @@ const getUniqueRecordKey = (raw: string, fallbackPrefix: string, index: number, 
 }
 
 const getDocumentEndpoint = (userId: number, documentId: number): string => `${API_URL}/users/${userId}/documents/${documentId}`
+const GENERAL_DOCUMENT_TYPE_MAP: Record<GeneralDocumentFieldKey, string[]> = {
+  profile_image: ['PROFILE_IMAGE'],
+  aadhaar_copy: ['AADHAAR_COPY', 'AADHAR_COPY'],
+  pan_copy: ['PAN_COPY'],
+  bank_proof: ['BANK_PROOF'],
+}
+const GENERAL_DOCUMENT_FIELD_CONFIG: Array<{ key: GeneralDocumentFieldKey; label: string; accept?: string }> = [
+  { key: 'profile_image', label: 'Profile Image', accept: 'image/*' },
+  { key: 'aadhaar_copy', label: 'Aadhaar Copy' },
+  { key: 'pan_copy', label: 'PAN Copy' },
+  { key: 'bank_proof', label: 'Bank Proof' },
+]
+const GENERAL_DOCUMENT_TYPE_SET = new Set(Object.values(GENERAL_DOCUMENT_TYPE_MAP).flat().map((type) => type.toUpperCase()))
 
 const formatBytes = (bytes: number): string => {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const getFilesFromInputEvent = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): FileList | null => {
+  const target = event.target as HTMLInputElement
+  return target.files ?? null
+}
+
+const getExistingGeneralDocument = (
+  documents: UserDocument[] | null | undefined,
+  fieldKey: GeneralDocumentFieldKey,
+  removedIds: number[],
+): UserDocument | null => {
+  if (!documents || documents.length === 0) return null
+  const allowedTypes = GENERAL_DOCUMENT_TYPE_MAP[fieldKey].map((type) => type.toUpperCase())
+  return (
+    documents.find((document) => {
+      if (removedIds.includes(document.id)) return false
+      return allowedTypes.includes(document.document_type.toUpperCase())
+    }) ?? null
+  )
 }
 
 function DocumentCard({ userId, document, label }: { userId: number; document: UserDocument; label?: string }) {
@@ -243,6 +282,89 @@ function DocumentCard({ userId, document, label }: { userId: number; document: U
   )
 }
 
+function InlineExistingFile({ userId, document, onRemove }: { userId: number; document: UserDocument; onRemove?: () => void }) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const canPreviewImage = document.content_type.toLowerCase().startsWith('image/')
+
+  useEffect(() => {
+    let objectUrl: string | null = null
+    let active = true
+
+    const loadPreview = async () => {
+      if (!canPreviewImage) return
+      const token = localStorage.getItem('auth_token')
+      if (!token) return
+      try {
+        const response = await fetch(getDocumentEndpoint(userId, document.id), {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!response.ok) return
+        const blob = await response.blob()
+        objectUrl = URL.createObjectURL(blob)
+        if (active) setPreviewUrl(objectUrl)
+      } catch {
+        // keep only filename if preview fails
+      }
+    }
+
+    void loadPreview()
+    return () => {
+      active = false
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [userId, document.id, canPreviewImage])
+
+  const onDownload = async () => {
+    const token = localStorage.getItem('auth_token')
+    if (!token) return
+    try {
+      const response = await fetch(getDocumentEndpoint(userId, document.id), {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!response.ok) return
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = window.document.createElement('a')
+      link.href = url
+      link.download = document.original_filename || `document-${document.id}`
+      window.document.body.appendChild(link)
+      link.click()
+      window.document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch {
+      // ignore download error
+    }
+  }
+
+  return (
+    <Card variant="outlined" className="md:col-span-2">
+      <CardContent className="!py-3">
+        <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
+          <Stack spacing={0.5} className="min-w-0">
+            <Typography variant="body2" className="truncate">
+              Existing: {document.original_filename}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {formatBytes(document.file_size)}
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1}>
+            <Button size="small" variant="outlined" onClick={() => void onDownload()}>
+              Download
+            </Button>
+            {onRemove ? (
+              <IconButton size="small" color="error" onClick={onRemove}>
+                <CloseRoundedIcon fontSize="small" />
+              </IconButton>
+            ) : null}
+          </Stack>
+        </Stack>
+        {previewUrl ? <img src={previewUrl} alt={document.original_filename} className="mt-2 max-h-28 w-full rounded object-contain bg-slate-100" /> : null}
+      </CardContent>
+    </Card>
+  )
+}
+
 function UsersPage() {
   const { showToast } = useToast()
   const [users, setUsers] = useState<User[]>([])
@@ -272,6 +394,11 @@ function UsersPage() {
   const [aadhaarCopyFile, setAadhaarCopyFile] = useState<File | null>(null)
   const [panCopyFile, setPanCopyFile] = useState<File | null>(null)
   const [bankProofFile, setBankProofFile] = useState<File | null>(null)
+  const [removedGeneralDocumentIds, setRemovedGeneralDocumentIds] = useState<number[]>([])
+  const [removedEducationDocumentIds, setRemovedEducationDocumentIds] = useState<number[]>([])
+  const [removedCompanyDocumentIds, setRemovedCompanyDocumentIds] = useState<number[]>([])
+  const [replacedEducationRowIds, setReplacedEducationRowIds] = useState<string[]>([])
+  const [replacedCompanyRowIds, setReplacedCompanyRowIds] = useState<string[]>([])
   const [page, setPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [totalUsers, setTotalUsers] = useState(0)
@@ -313,6 +440,11 @@ function UsersPage() {
     setAadhaarCopyFile(null)
     setPanCopyFile(null)
     setBankProofFile(null)
+    setRemovedGeneralDocumentIds([])
+    setRemovedEducationDocumentIds([])
+    setRemovedCompanyDocumentIds([])
+    setReplacedEducationRowIds([])
+    setReplacedCompanyRowIds([])
   }
 
   const loadUsers = async () => {
@@ -584,6 +716,7 @@ function UsersPage() {
       user.educations && user.educations.length > 0
         ? user.educations.map((education, index) => ({
             id: `edu_existing_${education.id}`,
+            source_id: education.id,
             record_key: `edu_${index + 1}`,
             degree: education.degree || '',
             institution: education.institution || '',
@@ -596,6 +729,7 @@ function UsersPage() {
       user.previous_companies && user.previous_companies.length > 0
         ? user.previous_companies.map((company, index) => ({
             id: `cmp_existing_${company.id}`,
+            source_id: company.id,
             record_key: `cmp_${index + 1}`,
             company_name: company.company_name || '',
             designation: company.designation || '',
@@ -615,7 +749,53 @@ function UsersPage() {
     setAadhaarCopyFile(null)
     setPanCopyFile(null)
     setBankProofFile(null)
+    setRemovedGeneralDocumentIds([])
+    setRemovedEducationDocumentIds([])
+    setRemovedCompanyDocumentIds([])
+    setReplacedEducationRowIds([])
+    setReplacedCompanyRowIds([])
     setEditOpen(true)
+  }
+
+  const existingProfileImage = getExistingGeneralDocument(editingUser?.documents, 'profile_image', removedGeneralDocumentIds)
+  const existingAadhaarCopy = getExistingGeneralDocument(editingUser?.documents, 'aadhaar_copy', removedGeneralDocumentIds)
+  const existingPanCopy = getExistingGeneralDocument(editingUser?.documents, 'pan_copy', removedGeneralDocumentIds)
+  const existingBankProof = getExistingGeneralDocument(editingUser?.documents, 'bank_proof', removedGeneralDocumentIds)
+  const existingGeneralDocumentByField: Record<GeneralDocumentFieldKey, UserDocument | null> = {
+    profile_image: existingProfileImage,
+    aadhaar_copy: existingAadhaarCopy,
+    pan_copy: existingPanCopy,
+    bank_proof: existingBankProof,
+  }
+  const selectedGeneralFileByField: Record<GeneralDocumentFieldKey, File | null> = {
+    profile_image: profileImageFile,
+    aadhaar_copy: aadhaarCopyFile,
+    pan_copy: panCopyFile,
+    bank_proof: bankProofFile,
+  }
+  const remainingGeneralDocuments =
+    editingUser?.documents?.filter((document) => {
+      if (removedGeneralDocumentIds.includes(document.id)) return false
+      return !GENERAL_DOCUMENT_TYPE_SET.has(document.document_type.toUpperCase())
+    }) ?? []
+
+  const onRemoveExistingGeneralDocument = (fieldKey: GeneralDocumentFieldKey) => {
+    const document = existingGeneralDocumentByField[fieldKey]
+    if (!document) return
+    setRemovedGeneralDocumentIds((prev) => (prev.includes(document.id) ? prev : [...prev, document.id]))
+  }
+
+  const onGeneralFileChange = (fieldKey: GeneralDocumentFieldKey, file: File | null) => {
+    if (fieldKey === 'profile_image') setProfileImageFile(file)
+    if (fieldKey === 'aadhaar_copy') setAadhaarCopyFile(file)
+    if (fieldKey === 'pan_copy') setPanCopyFile(file)
+    if (fieldKey === 'bank_proof') setBankProofFile(file)
+    if (file) {
+      const existingDocument = existingGeneralDocumentByField[fieldKey]
+      if (existingDocument) {
+        setRemovedGeneralDocumentIds((prev) => (prev.includes(existingDocument.id) ? prev : [...prev, existingDocument.id]))
+      }
+    }
   }
 
   const onDeleteUser = async (user: User) => {
@@ -816,6 +996,7 @@ function UsersPage() {
                     delete next[education.id]
                     return next
                   })
+                  setReplacedEducationRowIds((prev) => prev.filter((id) => id !== education.id))
                 }}
               >
                 <DeleteRoundedIcon />
@@ -864,14 +1045,58 @@ function UsersPage() {
                 type="file"
                 value={undefined}
                 onChange={(event) =>
-                  setEducationFilesByRowId((prev) => ({
-                    ...prev,
-                    [education.id]: event.target.files ? Array.from(event.target.files) : [],
-                  }))
+                  setEducationFilesByRowId((prev) => {
+                    const files = getFilesFromInputEvent(event)
+                    const nextFiles = files ? Array.from(files) : []
+                    setReplacedEducationRowIds((current) =>
+                      nextFiles.length > 0
+                        ? current.includes(education.id)
+                          ? current
+                          : [...current, education.id]
+                        : current.filter((id) => id !== education.id),
+                    )
+                    return {
+                      ...prev,
+                      [education.id]: nextFiles,
+                    }
+                  })
                 }
                 InputLabelProps={{ shrink: true }}
                 inputProps={{ multiple: true }}
               />
+              {(educationFilesByRowId[education.id] ?? []).length > 0 ? (
+                <Alert
+                  severity="success"
+                  className="md:col-span-2"
+                  action={
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setEducationFilesByRowId((prev) => ({ ...prev, [education.id]: [] }))
+                        setReplacedEducationRowIds((prev) => prev.filter((id) => id !== education.id))
+                      }}
+                    >
+                      <CloseRoundedIcon fontSize="small" />
+                    </IconButton>
+                  }
+                >
+                  Selected: {(educationFilesByRowId[education.id] ?? []).length} file(s)
+                </Alert>
+              ) : null}
+              {editingUser && education.source_id !== null && !replacedEducationRowIds.includes(education.id)
+                ? (editingUser.educations?.find((item) => item.id === education.source_id)?.documents ?? [])
+                    .filter((document) => !removedEducationDocumentIds.includes(document.id))
+                    .map((document) => (
+                      <InlineExistingFile
+                        key={`edu-field-doc-${document.id}`}
+                        userId={editingUser.id}
+                        document={document}
+                        onRemove={() =>
+                          setRemovedEducationDocumentIds((prev) => (prev.includes(document.id) ? prev : [...prev, document.id]))
+                        }
+                      />
+                    ))
+                : null}
             </div>
           </CardContent>
         </Card>
@@ -910,6 +1135,7 @@ function UsersPage() {
                     delete next[company.id]
                     return next
                   })
+                  setReplacedCompanyRowIds((prev) => prev.filter((id) => id !== company.id))
                 }}
               >
                 <DeleteRoundedIcon />
@@ -960,14 +1186,56 @@ function UsersPage() {
                 type="file"
                 value={undefined}
                 onChange={(event) =>
-                  setCompanyFilesByRowId((prev) => ({
-                    ...prev,
-                    [company.id]: event.target.files ? Array.from(event.target.files) : [],
-                  }))
+                  setCompanyFilesByRowId((prev) => {
+                    const files = getFilesFromInputEvent(event)
+                    const nextFiles = files ? Array.from(files) : []
+                    setReplacedCompanyRowIds((current) =>
+                      nextFiles.length > 0
+                        ? current.includes(company.id)
+                          ? current
+                          : [...current, company.id]
+                        : current.filter((id) => id !== company.id),
+                    )
+                    return {
+                      ...prev,
+                      [company.id]: nextFiles,
+                    }
+                  })
                 }
                 InputLabelProps={{ shrink: true }}
                 inputProps={{ multiple: true }}
               />
+              {(companyFilesByRowId[company.id] ?? []).length > 0 ? (
+                <Alert
+                  severity="success"
+                  className="md:col-span-2"
+                  action={
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setCompanyFilesByRowId((prev) => ({ ...prev, [company.id]: [] }))
+                        setReplacedCompanyRowIds((prev) => prev.filter((id) => id !== company.id))
+                      }}
+                    >
+                      <CloseRoundedIcon fontSize="small" />
+                    </IconButton>
+                  }
+                >
+                  Selected: {(companyFilesByRowId[company.id] ?? []).length} file(s)
+                </Alert>
+              ) : null}
+              {editingUser && company.source_id !== null && !replacedCompanyRowIds.includes(company.id)
+                ? (editingUser.previous_companies?.find((item) => item.id === company.source_id)?.documents ?? [])
+                    .filter((document) => !removedCompanyDocumentIds.includes(document.id))
+                    .map((document) => (
+                      <InlineExistingFile
+                        key={`cmp-field-doc-${document.id}`}
+                        userId={editingUser.id}
+                        document={document}
+                        onRemove={() => setRemovedCompanyDocumentIds((prev) => (prev.includes(document.id) ? prev : [...prev, document.id]))}
+                      />
+                    ))
+                : null}
             </div>
           </CardContent>
         </Card>
@@ -976,84 +1244,52 @@ function UsersPage() {
       <Typography variant="subtitle1" className="!font-semibold !pt-1">
         General Documents
       </Typography>
-      {editingUser?.documents && editingUser.documents.length > 0 ? (
+      {editingUser && remainingGeneralDocuments.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {editingUser.documents.map((document) => (
+          {remainingGeneralDocuments.map((document) => (
             <DocumentCard key={`edit-doc-${document.id}`} userId={editingUser.id} document={document} />
           ))}
         </div>
       ) : null}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <CustomInput
-          label="Profile Image"
-          type="file"
-          value={undefined}
-          onChange={(event) => setProfileImageFile(event.target.files?.[0] ?? null)}
-          InputLabelProps={{ shrink: true }}
-          inputProps={{ accept: 'image/*' }}
-        />
-        <CustomInput
-          label="Aadhaar Copy"
-          type="file"
-          value={undefined}
-          onChange={(event) => setAadhaarCopyFile(event.target.files?.[0] ?? null)}
-          InputLabelProps={{ shrink: true }}
-        />
-        <CustomInput
-          label="PAN Copy"
-          type="file"
-          value={undefined}
-          onChange={(event) => setPanCopyFile(event.target.files?.[0] ?? null)}
-          InputLabelProps={{ shrink: true }}
-        />
-        <CustomInput
-          label="Bank Proof"
-          type="file"
-          value={undefined}
-          onChange={(event) => setBankProofFile(event.target.files?.[0] ?? null)}
-          InputLabelProps={{ shrink: true }}
-        />
+        {GENERAL_DOCUMENT_FIELD_CONFIG.map((field) => (
+          <Stack key={field.key} spacing={1}>
+            <CustomInput
+              label={field.label}
+              type="file"
+              value={undefined}
+              onChange={(event) => onGeneralFileChange(field.key, getFilesFromInputEvent(event)?.[0] ?? null)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={field.accept ? { accept: field.accept } : undefined}
+            />
+            {selectedGeneralFileByField[field.key] ? (
+              <Alert
+                severity="success"
+                action={
+                  <IconButton size="small" onClick={() => onGeneralFileChange(field.key, null)}>
+                    <CloseRoundedIcon fontSize="small" />
+                  </IconButton>
+                }
+              >
+                Selected: {selectedGeneralFileByField[field.key]?.name}
+              </Alert>
+            ) : null}
+            {!selectedGeneralFileByField[field.key] && existingGeneralDocumentByField[field.key] ? (
+              <Alert
+                severity="info"
+                action={
+                  <IconButton size="small" onClick={() => onRemoveExistingGeneralDocument(field.key)}>
+                    <CloseRoundedIcon fontSize="small" />
+                  </IconButton>
+                }
+              >
+                Existing: {existingGeneralDocumentByField[field.key]?.original_filename}
+              </Alert>
+            ) : null}
+          </Stack>
+        ))}
       </div>
 
-      {editingUser?.educations?.some((education) => education.documents.length > 0) ? (
-        <>
-          <Typography variant="subtitle1" className="!font-semibold !pt-1">
-            Existing Education Documents
-          </Typography>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {editingUser.educations.flatMap((education, index) =>
-              education.documents.map((document) => (
-                <DocumentCard
-                  key={`edit-edu-doc-${document.id}`}
-                  userId={editingUser.id}
-                  document={document}
-                  label={`Education ${index + 1}: ${education.degree || education.institution || 'Record'}`}
-                />
-              )),
-            )}
-          </div>
-        </>
-      ) : null}
-
-      {editingUser?.previous_companies?.some((company) => company.documents.length > 0) ? (
-        <>
-          <Typography variant="subtitle1" className="!font-semibold !pt-1">
-            Existing Experience Documents
-          </Typography>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {editingUser.previous_companies.flatMap((company, index) =>
-              company.documents.map((document) => (
-                <DocumentCard
-                  key={`edit-cmp-doc-${document.id}`}
-                  userId={editingUser.id}
-                  document={document}
-                  label={`Company ${index + 1}: ${company.company_name || company.designation || 'Record'}`}
-                />
-              )),
-            )}
-          </div>
-        </>
-      ) : null}
     </>
   )
 
