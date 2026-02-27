@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Alert, Button, Card, CardContent, Chip, Stack, TableCell, Typography } from '@mui/material'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded'
+import TableViewRoundedIcon from '@mui/icons-material/TableViewRounded'
 import CustomAutocomplete, { type CustomAutocompleteOption } from '../components/CustomAutocomplete'
 import CustomInput from '../components/CustomInput'
 import CustomLoader from '../components/CustomLoader'
@@ -35,6 +37,8 @@ function AttendancePage() {
   const [attendanceError, setAttendanceError] = useState('')
   const [submittingCheckIn, setSubmittingCheckIn] = useState(false)
   const [submittingCheckOut, setSubmittingCheckOut] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [latitude, setLatitude] = useState('')
   const [longitude, setLongitude] = useState('')
@@ -224,6 +228,44 @@ function AttendancePage() {
     })
   }
 
+  const getExportFilters = (): AttendanceListFilters => ({
+    start_date: filterDraft.start_date.trim(),
+    end_date: filterDraft.end_date.trim(),
+    user_id: filterDraft.user_id,
+    branch_id: filterDraft.branch_id,
+    status: filterDraft.status ?? undefined,
+  })
+
+  const onExportPdf = async () => {
+    setExportingPdf(true)
+    setAttendanceError('')
+    try {
+      const filename = await attendanceService.exportPdf(getExportFilters())
+      showToast(`PDF exported: ${filename}`, 'success')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to export PDF.'
+      setAttendanceError(message)
+      showToast(message, 'error')
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
+  const onExportExcel = async () => {
+    setExportingExcel(true)
+    setAttendanceError('')
+    try {
+      const filename = await attendanceService.exportExcel(getExportFilters())
+      showToast(`Excel exported: ${filename}`, 'success')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to export Excel.'
+      setAttendanceError(message)
+      showToast(message, 'error')
+    } finally {
+      setExportingExcel(false)
+    }
+  }
+
   const onResetFilters = () => {
     setPage(1)
     setFilterDraft({
@@ -310,9 +352,29 @@ function AttendancePage() {
             <Typography variant="h6" className="!font-semibold">
               Attendance List
             </Typography>
-            <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void loadAttendance()} disabled={loadingAttendance}>
-              {loadingAttendance ? <CustomLoader size={16} color="inherit" /> : 'Refresh'}
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={!exportingPdf ? <PictureAsPdfRoundedIcon /> : undefined}
+                onClick={() => void onExportPdf()}
+                disabled={loadingAttendance || exportingPdf || exportingExcel}
+              >
+                {exportingPdf ? <CustomLoader size={16} color="inherit" /> : 'Export PDF'}
+              </Button>
+              <Button
+                variant="outlined"
+                color="success"
+                startIcon={!exportingExcel ? <TableViewRoundedIcon /> : undefined}
+                onClick={() => void onExportExcel()}
+                disabled={loadingAttendance || exportingPdf || exportingExcel}
+              >
+                {exportingExcel ? <CustomLoader size={16} color="inherit" /> : 'Export Excel'}
+              </Button>
+              <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void loadAttendance()} disabled={loadingAttendance}>
+                {loadingAttendance ? <CustomLoader size={16} color="inherit" /> : 'Refresh'}
+              </Button>
+            </Stack>
           </Stack>
 
           <form onSubmit={onFilterSubmit} className="!mt-4 grid grid-cols-1 gap-3 md:grid-cols-6">

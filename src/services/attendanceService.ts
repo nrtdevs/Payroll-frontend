@@ -47,6 +47,8 @@ export type AttendanceListFilters = {
   status?: string
 }
 
+type AttendanceExportFormat = 'pdf' | 'excel'
+
 export type AttendancePaginatedResponse = {
   items: AttendanceRecord[]
   page: number
@@ -77,6 +79,23 @@ const parseErrorMessage = async (response: Response): Promise<string> => {
   } catch {
     return `Request failed (${response.status}).`
   }
+}
+
+const getFilenameFromDisposition = (contentDisposition: string | null, fallback: string): string => {
+  if (!contentDisposition) return fallback
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim())
+    } catch {
+      return utf8Match[1].trim()
+    }
+  }
+
+  const simpleMatch = contentDisposition.match(/filename="?([^\";]+)"?/i)
+  if (simpleMatch?.[1]) return simpleMatch[1].trim()
+  return fallback
 }
 
 const toNumberOrNull = (value: unknown): number | null => {
@@ -127,6 +146,45 @@ const normalizeAttendanceRecord = (value: unknown): AttendanceRecord | null => {
 const normalizeAttendanceList = (value: unknown): AttendanceRecord[] => {
   if (!Array.isArray(value)) return []
   return value.map(normalizeAttendanceRecord).filter((item): item is AttendanceRecord => item !== null)
+}
+
+const buildAttendanceQuery = (filters: AttendanceListFilters = {}): URLSearchParams => {
+  const query = new URLSearchParams()
+  if (filters.start_date?.trim()) query.set('start_date', filters.start_date.trim())
+  if (filters.end_date?.trim()) query.set('end_date', filters.end_date.trim())
+  if (filters.user_id !== null && filters.user_id !== undefined) query.set('user_id', String(filters.user_id))
+  if (filters.branch_id !== null && filters.branch_id !== undefined) query.set('branch_id', String(filters.branch_id))
+  if (filters.status?.trim()) query.set('status', filters.status.trim().toUpperCase())
+  return query
+}
+
+const downloadAttendanceExport = async (format: AttendanceExportFormat, filters: AttendanceListFilters = {}): Promise<string> => {
+  const query = buildAttendanceQuery(filters)
+  const response = await fetch(`${API_URL}/attendance/export/${format}?${query.toString()}`, {
+    method: 'GET',
+    headers: authHeaders(false),
+  })
+
+  if (handleUnauthorizedResponse(response)) {
+    throw new Error(SESSION_TIMEOUT_MESSAGE)
+  }
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response))
+  }
+
+  const blob = await response.blob()
+  const fallbackFileName = `attendance.${format === 'pdf' ? 'pdf' : 'xlsx'}`
+  const filename = getFilenameFromDisposition(response.headers.get('Content-Disposition'), fallbackFileName)
+  const objectUrl = URL.createObjectURL(blob)
+
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(objectUrl)
+  return filename
 }
 
 export const attendanceService = {
@@ -183,14 +241,9 @@ export const attendanceService = {
   },
 
   async getAttendanceList(page: number, size: number, filters: AttendanceListFilters = {}): Promise<AttendancePaginatedResponse> {
-    const query = new URLSearchParams()
+    const query = buildAttendanceQuery(filters)
     query.set('page', String(page))
     query.set('size', String(size))
-    if (filters.start_date?.trim()) query.set('start_date', filters.start_date.trim())
-    if (filters.end_date?.trim()) query.set('end_date', filters.end_date.trim())
-    if (filters.user_id !== null && filters.user_id !== undefined) query.set('user_id', String(filters.user_id))
-    if (filters.branch_id !== null && filters.branch_id !== undefined) query.set('branch_id', String(filters.branch_id))
-    if (filters.status?.trim()) query.set('status', filters.status.trim().toUpperCase())
 
     const response = await fetch(`${API_URL}/attendance?${query.toString()}`, {
       method: 'GET',
@@ -239,5 +292,13 @@ export const attendanceService = {
       total: Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length,
       total_pages: Number.isFinite(rawTotalPages) && rawTotalPages >= 0 ? rawTotalPages : 0,
     }
+  },
+
+  async exportPdf(filters: AttendanceListFilters = {}): Promise<string> {
+    return downloadAttendanceExport('pdf', filters)
+  },
+
+  async exportExcel(filters: AttendanceListFilters = {}): Promise<string> {
+    return downloadAttendanceExport('excel', filters)
   },
 }
