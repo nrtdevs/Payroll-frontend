@@ -10,6 +10,7 @@ import ProfilePage from './pages/ProfilePage'
 import RoleEditPage from './pages/RoleEditPage'
 import RolesPage from './pages/RolesPage'
 import LeaveManagementPage from './pages/LeaveManagementPage'
+import LeaveRequestManagementPage from './pages/LeaveRequestManagementPage'
 import SalaryManagementPage from './pages/SalaryManagementPage'
 import MasterSettingPage from './pages/MasterSettingPage'
 import OrganizationStructurePage from './pages/OrganizationStructurePage'
@@ -67,7 +68,8 @@ function App() {
         <Route path="master-setting" element={<MasterSettingPage />} />
         <Route path="organization-structure" element={<OrganizationStructurePage />} />
         <Route path="leave-master" element={<LeaveManagementPage />} />
-        <Route path="leave-management" element={<Navigate to="/leave-master" replace />} />
+        <Route path="leave-management" element={<LeaveRequestManagementPage />} />
+        <Route path="leave-requests" element={<Navigate to="/leave-management" replace />} />
         <Route path="salary-management" element={<SalaryManagementPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="roles" element={<Navigate to="/role" replace />} />
@@ -87,7 +89,8 @@ function App() {
         <Route path="dashboard/master-setting" element={<Navigate to="/master-setting" replace />} />
         <Route path="dashboard/organization-structure" element={<Navigate to="/organization-structure" replace />} />
         <Route path="dashboard/leave-master" element={<Navigate to="/leave-master" replace />} />
-        <Route path="dashboard/leave-management" element={<Navigate to="/leave-master" replace />} />
+        <Route path="dashboard/leave-management" element={<Navigate to="/leave-management" replace />} />
+        <Route path="dashboard/leave-requests" element={<Navigate to="/leave-management" replace />} />
         <Route path="dashboard/salary-management" element={<Navigate to="/salary-management" replace />} />
         <Route path="dashboard/attendance" element={<Navigate to="/attendance" replace />} />
         <Route path="dashboard/attendense" element={<Navigate to="/attendance" replace />} />

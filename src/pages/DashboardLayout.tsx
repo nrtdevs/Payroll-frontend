@@ -31,6 +31,7 @@ import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import EventNoteRoundedIcon from '@mui/icons-material/EventNoteRounded'
+import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import DeviceHubRoundedIcon from '@mui/icons-material/DeviceHubRounded'
@@ -62,6 +63,7 @@ const masterMenuChildren = [
 const settingsMenuChildren = [
   { label: 'Master Setting', path: '/master-setting', icon: <TuneRoundedIcon />, permission: null },
   { label: 'Organization Structure', path: '/organization-structure', icon: <DeviceHubRoundedIcon />, permission: null },
+  { label: 'Leave Management', path: '/leave-management', icon: <AssignmentTurnedInRoundedIcon />, permission: null },
   { label: 'Leave Master', path: '/leave-master', icon: <EventNoteRoundedIcon />, permission: null },
   { label: 'Salary Management', path: '/salary-management', icon: <PaymentsRoundedIcon />, permission: null },
 ] as const
