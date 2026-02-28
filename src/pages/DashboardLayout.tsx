@@ -26,10 +26,14 @@ import { alpha } from '@mui/material/styles'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded'
 import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
+import EventNoteRoundedIcon from '@mui/icons-material/EventNoteRounded'
+import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
@@ -53,6 +57,13 @@ const masterMenuChildren = [
   { label: 'Branches', path: '/branch', icon: <AccountTreeRoundedIcon />, permission: 'LIST_BRANCH' },
   { label: 'Roles', path: '/role', icon: <AdminPanelSettingsRoundedIcon />, permission: 'LIST_ROLE' },
   { label: 'Permissions', path: '/permission', icon: <VpnKeyRoundedIcon />, permission: 'LIST_PERMISSION' },
+  { label: 'Employment Type', path: '/employment-type', icon: <BadgeRoundedIcon />, permission: null },
+] as const
+
+const settingsMenuChildren = [
+  { label: 'Master Setting', path: '/master-setting', icon: <TuneRoundedIcon />, permission: null },
+  { label: 'Leave Management', path: '/leave-management', icon: <EventNoteRoundedIcon />, permission: null },
+  { label: 'Salary Management', path: '/salary-management', icon: <PaymentsRoundedIcon />, permission: null },
 ] as const
 
 const expandedWidth = 280
@@ -72,6 +83,7 @@ function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [logoutLoading, setLogoutLoading] = useState(false)
   const [masterOpen, setMasterOpen] = useState(true)
+  const [settingsOpen, setSettingsOpen] = useState(true)
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null)
 
   const userName = useMemo(
@@ -87,16 +99,24 @@ function DashboardLayout() {
     [permissionSet],
   )
   const visibleMasterChildren = useMemo(
-    () => masterMenuChildren.filter((item) => permissionSet.has(item.permission)),
+    () => masterMenuChildren.filter((item) => item.permission === null || permissionSet.has(item.permission)),
+    [permissionSet],
+  )
+  const visibleSettingsChildren = useMemo(
+    () => settingsMenuChildren.filter((item) => item.permission === null || permissionSet.has(item.permission)),
     [permissionSet],
   )
   const flatVisibleItems = useMemo(
-    () => [...visibleMenuItems, ...visibleMasterChildren],
-    [visibleMenuItems, visibleMasterChildren],
+    () => [...visibleMenuItems, ...visibleMasterChildren, ...visibleSettingsChildren],
+    [visibleMenuItems, visibleMasterChildren, visibleSettingsChildren],
   )
   const isMasterRouteActive = useMemo(
     () => visibleMasterChildren.some((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)),
     [location.pathname, visibleMasterChildren],
+  )
+  const isSettingsRouteActive = useMemo(
+    () => visibleSettingsChildren.some((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)),
+    [location.pathname, visibleSettingsChildren],
   )
   const sidebarExpanded = isDesktop ? desktopPinned || desktopHovered : true
   const sidebarWidth = isDesktop ? (sidebarExpanded ? expandedWidth : collapsedWidth) : expandedWidth
@@ -123,6 +143,10 @@ function DashboardLayout() {
   useEffect(() => {
     setMasterOpen(isMasterRouteActive)
   }, [isMasterRouteActive])
+
+  useEffect(() => {
+    setSettingsOpen(isSettingsRouteActive)
+  }, [isSettingsRouteActive])
 
   const onLogout = async () => {
     setLogoutLoading(true)
@@ -183,6 +207,7 @@ function DashboardLayout() {
               onClick={() => {
                 setMobileOpen(false)
                 setMasterOpen(false)
+                setSettingsOpen(false)
                 if (item.path === '/dashboard' && location.pathname === '/dashboard') {
                   navigate(0)
                   return
@@ -219,7 +244,7 @@ function DashboardLayout() {
               }}
             >
               <ListItemIcon className="!min-w-10" sx={{ color: navIconColor }}>
-                <SettingsRoundedIcon />
+                <AccountTreeRoundedIcon />
               </ListItemIcon>
               {sidebarExpanded ? (
                 <>
@@ -232,6 +257,59 @@ function DashboardLayout() {
             <Collapse in={masterOpen && sidebarExpanded} timeout="auto" unmountOnExit>
               <List disablePadding>
                 {visibleMasterChildren.map((item) => {
+                  const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+                  return (
+                    <ListItemButton
+                      key={item.path}
+                      onClick={() => {
+                        setMobileOpen(false)
+                        navigate(item.path)
+                      }}
+                      className="!mb-1 !ml-4 !rounded-xl"
+                      sx={{
+                        bgcolor: active ? navActiveBg : 'transparent',
+                        '&:hover': { bgcolor: active ? navActiveBg : navHoverBg },
+                      }}
+                    >
+                      <ListItemIcon className="!min-w-10" sx={{ color: active ? navActiveText : navIconColor }}>
+                        {item.icon}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={item.label}
+                        primaryTypographyProps={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? navActiveText : navTextColor }}
+                      />
+                    </ListItemButton>
+                  )
+                })}
+              </List>
+            </Collapse>
+          </>
+        ) : null}
+
+        {visibleSettingsChildren.length > 0 ? (
+          <>
+            <ListItemButton
+              onClick={() => setSettingsOpen((prev) => !prev)}
+              className="!mb-1 !rounded-xl"
+              sx={{
+                bgcolor: isSettingsRouteActive ? navActiveBg : 'transparent',
+                '&:hover': { bgcolor: isSettingsRouteActive ? navActiveBg : navHoverBg },
+              }}
+            >
+              <ListItemIcon className="!min-w-10" sx={{ color: navIconColor }}>
+                <SettingsRoundedIcon />
+              </ListItemIcon>
+              {sidebarExpanded ? (
+                <>
+                  <ListItemText primary="Settings" primaryTypographyProps={{ fontSize: 14, fontWeight: 600, color: navTextColor }} />
+                  {settingsOpen ? <ExpandLessRoundedIcon sx={{ color: navIconColor }} /> : <ExpandMoreRoundedIcon sx={{ color: navIconColor }} />}
+                </>
+              ) : null}
+            </ListItemButton>
+
+            <Collapse in={settingsOpen && sidebarExpanded} timeout="auto" unmountOnExit>
+              <List disablePadding>
+                {visibleSettingsChildren.map((item) => {
                   const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
                   return (
                     <ListItemButton

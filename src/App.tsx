@@ -9,6 +9,10 @@ import PermissionsPage from './pages/PermissionsPage'
 import ProfilePage from './pages/ProfilePage'
 import RoleEditPage from './pages/RoleEditPage'
 import RolesPage from './pages/RolesPage'
+import LeaveManagementPage from './pages/LeaveManagementPage'
+import SalaryManagementPage from './pages/SalaryManagementPage'
+import MasterSettingPage from './pages/MasterSettingPage'
+import EmploymentTypesPage from './pages/EmploymentTypesPage'
 import UsersPage from './pages/UsersPage'
 
 const hasAuthToken = (): boolean => {
@@ -59,6 +63,10 @@ function App() {
         <Route path="role-edit/:roleId" element={<RoleEditPage />} />
         <Route path="user" element={<UsersPage />} />
         <Route path="permission" element={<PermissionsPage />} />
+        <Route path="employment-type" element={<EmploymentTypesPage />} />
+        <Route path="master-setting" element={<MasterSettingPage />} />
+        <Route path="leave-management" element={<LeaveManagementPage />} />
+        <Route path="salary-management" element={<SalaryManagementPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="roles" element={<Navigate to="/role" replace />} />
         <Route path="users" element={<Navigate to="/user" replace />} />
@@ -71,6 +79,12 @@ function App() {
         <Route path="dashboard/users" element={<Navigate to="/user" replace />} />
         <Route path="dashboard/permission" element={<Navigate to="/permission" replace />} />
         <Route path="dashboard/permissions" element={<Navigate to="/permission" replace />} />
+        <Route path="employment-types" element={<Navigate to="/employment-type" replace />} />
+        <Route path="dashboard/employment-type" element={<Navigate to="/employment-type" replace />} />
+        <Route path="dashboard/employment-types" element={<Navigate to="/employment-type" replace />} />
+        <Route path="dashboard/master-setting" element={<Navigate to="/master-setting" replace />} />
+        <Route path="dashboard/leave-management" element={<Navigate to="/leave-management" replace />} />
+        <Route path="dashboard/salary-management" element={<Navigate to="/salary-management" replace />} />
         <Route path="dashboard/attendance" element={<Navigate to="/attendance" replace />} />
         <Route path="dashboard/attendense" element={<Navigate to="/attendance" replace />} />
         <Route index element={<Navigate to="/dashboard" replace />} />

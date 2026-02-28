@@ -836,99 +836,104 @@ function UsersPage() {
   }
 
   const userFormFields = (includePassword: boolean) => (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      <CustomInput label="Name" value={userForm.name} onChange={(e) => setUserForm((p) => ({ ...p, name: e.target.value }))} required />
-      <CustomAutocomplete
-        label="Branch"
-        required
-        requiredMessage="Branch is required."
-        options={branchOptions}
-        value={userForm.branch_id}
-        disabled={loadingFormOptions}
-        onChange={(nextValue) => setUserForm((p) => ({ ...p, branch_id: nextValue }))}
-      />
-      <CustomAutocomplete
-        label="Role"
-        required
-        requiredMessage="Role is required."
-        options={roleOptions}
-        value={userForm.role_id}
-        disabled={loadingFormOptions}
-        onChange={(nextValue) => setUserForm((p) => ({ ...p, role_id: nextValue }))}
-      />
-      <CustomAutocomplete
-        label="Status"
-        required
-        requiredMessage="Status is required."
-        options={statusOptions}
-        value={userForm.status as 'ACTIVE' | 'INACTIVE'}
-        onChange={(nextValue) => setUserForm((p) => ({ ...p, status: nextValue ?? 'ACTIVE' }))}
-      />
-      <CustomInput
-        label="Salary Type"
-        value={userForm.salary_type}
-        onChange={(e) => setUserForm((p) => ({ ...p, salary_type: e.target.value }))}
-        required
-      />
-      <CustomInput
-        label="Salary"
-        type="number"
-        value={userForm.salary ?? ''}
-        onChange={(e) => setUserForm((p) => ({ ...p, salary: toNullableNumber(e.target.value) }))}
-        required
-      />
-      <CustomInput
-        label="Leave Balance"
-        type="number"
-        value={userForm.leave_balance ?? ''}
-        onChange={(e) => setUserForm((p) => ({ ...p, leave_balance: toNullableNumber(e.target.value) }))}
-        required
-      />
-      <CustomInput label="Email" type="email" value={userForm.email} onChange={(e) => setUserForm((p) => ({ ...p, email: e.target.value }))} required />
-      {includePassword ? (
+    <Stack spacing={2}>
+      <Typography variant="subtitle1" className="!font-semibold">
+        Personal Details
+      </Typography>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <CustomInput label="Name" value={userForm.name} onChange={(e) => setUserForm((p) => ({ ...p, name: e.target.value }))} required />
+        <CustomInput label="Email" type="email" value={userForm.email} onChange={(e) => setUserForm((p) => ({ ...p, email: e.target.value }))} required />
+        {includePassword ? (
+          <CustomInput
+            label="Password"
+            type="password"
+            value={userForm.password}
+            onChange={(e) => setUserForm((p) => ({ ...p, password: e.target.value }))}
+            required
+          />
+        ) : null}
+        <CustomInput label="Mobile" value={userForm.mobile} onChange={(e) => setUserForm((p) => ({ ...p, mobile: e.target.value }))} required />
+        <CustomInput label="Number" value={userForm.number} onChange={(e) => setUserForm((p) => ({ ...p, number: e.target.value }))} required />
+        <CustomInput label="PAN" value={userForm.pan} onChange={(e) => setUserForm((p) => ({ ...p, pan: e.target.value }))} required />
+        <CustomInput label="Aadhaar" value={userForm.aadhaar} onChange={(e) => setUserForm((p) => ({ ...p, aadhaar: e.target.value }))} required />
         <CustomInput
-          label="Password"
-          type="password"
-          value={userForm.password}
-          onChange={(e) => setUserForm((p) => ({ ...p, password: e.target.value }))}
+          label="Father Name"
+          value={userForm.father_name}
+          onChange={(e) => setUserForm((p) => ({ ...p, father_name: e.target.value }))}
           required
         />
-      ) : null}
-      <CustomInput label="Mobile" value={userForm.mobile} onChange={(e) => setUserForm((p) => ({ ...p, mobile: e.target.value }))} required />
-      <CustomInput label="Number" value={userForm.number} onChange={(e) => setUserForm((p) => ({ ...p, number: e.target.value }))} required />
-      <CustomInput label="PAN" value={userForm.pan} onChange={(e) => setUserForm((p) => ({ ...p, pan: e.target.value }))} required />
-      <CustomInput label="Aadhaar" value={userForm.aadhaar} onChange={(e) => setUserForm((p) => ({ ...p, aadhaar: e.target.value }))} required />
-      <CustomInput
-        label="Father Name"
-        value={userForm.father_name}
-        onChange={(e) => setUserForm((p) => ({ ...p, father_name: e.target.value }))}
-        required
-      />
-      <CustomInput
-        label="Mother Name"
-        value={userForm.mother_name}
-        onChange={(e) => setUserForm((p) => ({ ...p, mother_name: e.target.value }))}
-        required
-      />
-      <CustomInput
-        label="Current Address"
-        value={userForm.current_address}
-        onChange={(e) => setUserForm((p) => ({ ...p, current_address: e.target.value }))}
-        required
-      />
-      <CustomInput
-        label="Home Address"
-        value={userForm.home_address}
-        onChange={(e) => setUserForm((p) => ({ ...p, home_address: e.target.value }))}
-        required
-      />
-      <CustomInput
-        label="Business ID"
-        type="number"
-        value={userForm.business_id ?? ''}
-        onChange={(e) => setUserForm((p) => ({ ...p, business_id: toNullableNumber(e.target.value) }))}
-      />
-    </div>
+        <CustomInput
+          label="Mother Name"
+          value={userForm.mother_name}
+          onChange={(e) => setUserForm((p) => ({ ...p, mother_name: e.target.value }))}
+          required
+        />
+        <CustomInput
+          label="Current Address"
+          value={userForm.current_address}
+          onChange={(e) => setUserForm((p) => ({ ...p, current_address: e.target.value }))}
+          required
+        />
+        <CustomInput
+          label="Home Address"
+          value={userForm.home_address}
+          onChange={(e) => setUserForm((p) => ({ ...p, home_address: e.target.value }))}
+          required
+        />
+      </div>
+
+      <Typography variant="subtitle1" className="!font-semibold">
+        Employment Details
+      </Typography>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <CustomAutocomplete
+          label="Branch"
+          required
+          requiredMessage="Branch is required."
+          options={branchOptions}
+          value={userForm.branch_id}
+          disabled={loadingFormOptions}
+          onChange={(nextValue) => setUserForm((p) => ({ ...p, branch_id: nextValue }))}
+        />
+        <CustomAutocomplete
+          label="Role"
+          required
+          requiredMessage="Role is required."
+          options={roleOptions}
+          value={userForm.role_id}
+          disabled={loadingFormOptions}
+          onChange={(nextValue) => setUserForm((p) => ({ ...p, role_id: nextValue }))}
+        />
+        <CustomAutocomplete
+          label="Status"
+          required
+          requiredMessage="Status is required."
+          options={statusOptions}
+          value={userForm.status as 'ACTIVE' | 'INACTIVE'}
+          onChange={(nextValue) => setUserForm((p) => ({ ...p, status: nextValue ?? 'ACTIVE' }))}
+        />
+        <CustomInput
+          label="Salary Type"
+          value={userForm.salary_type}
+          onChange={(e) => setUserForm((p) => ({ ...p, salary_type: e.target.value }))}
+          required
+        />
+        <CustomInput
+          label="Salary"
+          type="number"
+          value={userForm.salary ?? ''}
+          onChange={(e) => setUserForm((p) => ({ ...p, salary: toNullableNumber(e.target.value) }))}
+          required
+        />
+        <CustomInput
+          label="Leave Balance"
+          type="number"
+          value={userForm.leave_balance ?? ''}
+          onChange={(e) => setUserForm((p) => ({ ...p, leave_balance: toNullableNumber(e.target.value) }))}
+          required
+        />
+      </div>
+    </Stack>
   )
 
   const nestedFields = () => (
