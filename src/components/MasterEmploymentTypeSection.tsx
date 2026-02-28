@@ -29,7 +29,13 @@ import type { EmploymentType, EmploymentTypePayload } from '../services/employme
 
 const emptyEmploymentTypeForm: EmploymentTypePayload = { name: '' }
 
-function MasterEmploymentTypeSection() {
+type MasterEmploymentTypeSectionProps = {
+  canCreate: boolean
+  canUpdate: boolean
+  canDelete: boolean
+}
+
+function MasterEmploymentTypeSection({ canCreate, canUpdate, canDelete }: MasterEmploymentTypeSectionProps) {
   const { showToast } = useToast()
   const [items, setItems] = useState<EmploymentType[]>([])
   const [loading, setLoading] = useState(false)
@@ -150,9 +156,11 @@ function MasterEmploymentTypeSection() {
             Employment Type
           </Typography>
           <Stack direction="row" spacing={1}>
-            <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setCreateOpen(true)}>
-              Create
-            </Button>
+            {canCreate ? (
+              <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setCreateOpen(true)}>
+                Create
+              </Button>
+            ) : null}
             <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void loadItems()} disabled={loading}>
               {loading ? <CustomLoader size={16} color="inherit" /> : 'Refresh'}
             </Button>
@@ -213,20 +221,26 @@ function MasterEmploymentTypeSection() {
                   </IconButton>
                 </Tooltip>
                 <Tooltip title="Edit">
-                  <IconButton
-                    onClick={() => {
-                      setEditingId(row.id)
-                      setForm({ name: row.name })
-                      setEditOpen(true)
-                    }}
-                  >
-                    <EditRoundedIcon />
-                  </IconButton>
+                  <span>
+                    <IconButton
+                      disabled={!canUpdate}
+                      onClick={() => {
+                        if (!canUpdate) return
+                        setEditingId(row.id)
+                        setForm({ name: row.name })
+                        setEditOpen(true)
+                      }}
+                    >
+                      <EditRoundedIcon />
+                    </IconButton>
+                  </span>
                 </Tooltip>
                 <Tooltip title="Delete">
-                  <IconButton color="error" onClick={() => void onDelete(row)}>
-                    <DeleteRoundedIcon />
-                  </IconButton>
+                  <span>
+                    <IconButton color="error" disabled={!canDelete} onClick={() => void onDelete(row)}>
+                      <DeleteRoundedIcon />
+                    </IconButton>
+                  </span>
                 </Tooltip>
               </TableCell>
             </>
@@ -234,7 +248,7 @@ function MasterEmploymentTypeSection() {
         />
       </CardContent>
 
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={canCreate && createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Create Employment Type</DialogTitle>
         <DialogContent>
           <Box component="form" onSubmit={onCreate} className="grid gap-3 pt-1">
@@ -251,7 +265,7 @@ function MasterEmploymentTypeSection() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={canUpdate && editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Update Employment Type #{editingId}</DialogTitle>
         <DialogContent>
           <Box component="form" onSubmit={onUpdate} className="grid gap-3 pt-1">

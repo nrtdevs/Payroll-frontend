@@ -104,9 +104,17 @@ function DashboardLayout() {
     () => masterMenuChildren.filter((item) => item.permission === null || permissionSet.has(item.permission)),
     [permissionSet],
   )
-  const visibleSettingsChildren = useMemo(
-    () => settingsMenuChildren.filter((item) => item.permission === null || permissionSet.has(item.permission)),
+  const canOpenMasterSetting = useMemo(
+    () => permissionSet.has('EMPLOYMENT_TYPE_LIST') || permissionSet.has('DESIGNATION_LIST') || permissionSet.has('LEAVE_TYPE_LIST'),
     [permissionSet],
+  )
+  const visibleSettingsChildren = useMemo(
+    () =>
+      settingsMenuChildren.filter((item) => {
+        if (item.path === '/master-setting') return canOpenMasterSetting
+        return item.permission === null || permissionSet.has(item.permission)
+      }),
+    [canOpenMasterSetting, permissionSet],
   )
   const flatVisibleItems = useMemo(
     () => [...visibleMenuItems, ...visibleMasterChildren, ...visibleSettingsChildren],

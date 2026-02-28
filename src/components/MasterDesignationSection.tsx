@@ -30,7 +30,13 @@ import type { Designation, DesignationPayload } from '../services/designationSer
 
 const emptyDesignationForm: DesignationPayload = { name: '', description: '', is_active: true }
 
-function MasterDesignationSection() {
+type MasterDesignationSectionProps = {
+  canCreate: boolean
+  canUpdate: boolean
+  canDelete: boolean
+}
+
+function MasterDesignationSection({ canCreate, canUpdate, canDelete }: MasterDesignationSectionProps) {
   const { showToast } = useToast()
   const [items, setItems] = useState<Designation[]>([])
   const [loading, setLoading] = useState(false)
@@ -152,9 +158,11 @@ function MasterDesignationSection() {
             Designation
           </Typography>
           <Stack direction="row" spacing={1}>
-            <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setCreateOpen(true)}>
-              Create
-            </Button>
+            {canCreate ? (
+              <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setCreateOpen(true)}>
+                Create
+              </Button>
+            ) : null}
             <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void loadItems()} disabled={loading}>
               {loading ? <CustomLoader size={16} color="inherit" /> : 'Refresh'}
             </Button>
@@ -221,20 +229,26 @@ function MasterDesignationSection() {
                   </IconButton>
                 </Tooltip>
                 <Tooltip title="Edit">
-                  <IconButton
-                    onClick={() => {
-                      setEditingId(row.id)
-                      setForm({ name: row.name, description: row.description ?? '', is_active: Boolean(row.is_active) })
-                      setEditOpen(true)
-                    }}
-                  >
-                    <EditRoundedIcon />
-                  </IconButton>
+                  <span>
+                    <IconButton
+                      disabled={!canUpdate}
+                      onClick={() => {
+                        if (!canUpdate) return
+                        setEditingId(row.id)
+                        setForm({ name: row.name, description: row.description ?? '', is_active: Boolean(row.is_active) })
+                        setEditOpen(true)
+                      }}
+                    >
+                      <EditRoundedIcon />
+                    </IconButton>
+                  </span>
                 </Tooltip>
                 <Tooltip title="Delete">
-                  <IconButton color="error" onClick={() => void onDelete(row)}>
-                    <DeleteRoundedIcon />
-                  </IconButton>
+                  <span>
+                    <IconButton color="error" disabled={!canDelete} onClick={() => void onDelete(row)}>
+                      <DeleteRoundedIcon />
+                    </IconButton>
+                  </span>
                 </Tooltip>
               </TableCell>
             </>
@@ -242,7 +256,7 @@ function MasterDesignationSection() {
         />
       </CardContent>
 
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={canCreate && createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Create Designation</DialogTitle>
         <DialogContent>
           <Box component="form" onSubmit={onCreate} className="grid gap-3 pt-1">
@@ -275,7 +289,7 @@ function MasterDesignationSection() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={canUpdate && editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Update Designation #{editingId}</DialogTitle>
         <DialogContent>
           <Box component="form" onSubmit={onUpdate} className="grid gap-3 pt-1">
