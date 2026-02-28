@@ -12,6 +12,7 @@ import RolesPage from './pages/RolesPage'
 import LeaveManagementPage from './pages/LeaveManagementPage'
 import SalaryManagementPage from './pages/SalaryManagementPage'
 import MasterSettingPage from './pages/MasterSettingPage'
+import OrganizationStructurePage from './pages/OrganizationStructurePage'
 import UsersPage from './pages/UsersPage'
 
 const hasAuthToken = (): boolean => {
@@ -64,6 +65,7 @@ function App() {
         <Route path="permission" element={<PermissionsPage />} />
         <Route path="employment-type" element={<Navigate to="/master-setting" replace />} />
         <Route path="master-setting" element={<MasterSettingPage />} />
+        <Route path="organization-structure" element={<OrganizationStructurePage />} />
         <Route path="leave-master" element={<LeaveManagementPage />} />
         <Route path="leave-management" element={<Navigate to="/leave-master" replace />} />
         <Route path="salary-management" element={<SalaryManagementPage />} />
@@ -83,6 +85,7 @@ function App() {
         <Route path="dashboard/employment-type" element={<Navigate to="/employment-type" replace />} />
         <Route path="dashboard/employment-types" element={<Navigate to="/employment-type" replace />} />
         <Route path="dashboard/master-setting" element={<Navigate to="/master-setting" replace />} />
+        <Route path="dashboard/organization-structure" element={<Navigate to="/organization-structure" replace />} />
         <Route path="dashboard/leave-master" element={<Navigate to="/leave-master" replace />} />
         <Route path="dashboard/leave-management" element={<Navigate to="/leave-master" replace />} />
         <Route path="dashboard/salary-management" element={<Navigate to="/salary-management" replace />} />

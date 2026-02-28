@@ -62,6 +62,18 @@ export type UserPreviousCompany = {
   documents: UserDocument[]
 }
 
+export type UserHierarchyNode = {
+  id: number
+  name: string
+  email: string
+  role: string
+  designation_id: number | null
+  reporting_manager_id: number | null
+  profile_image_document_id: number | null
+  profile_image_url: string | null
+  children: UserHierarchyNode[]
+}
+
 export type UserPayload = {
   name: string
   branch_id: number | null
@@ -317,6 +329,33 @@ const normalizeUserList = (value: unknown): User[] => {
   return value.map(normalizeUser).filter((user): user is User => user !== null)
 }
 
+const normalizeHierarchyNode = (value: unknown): UserHierarchyNode | null => {
+  if (!value || typeof value !== 'object') return null
+  const obj = value as Record<string, unknown>
+  const id = toNumberOrNull(obj.id)
+  if (id === null) return null
+
+  const rawChildren = Array.isArray(obj.children) ? obj.children : []
+  const children = rawChildren.map(normalizeHierarchyNode).filter((item): item is UserHierarchyNode => item !== null)
+
+  return {
+    id,
+    name: String(obj.name ?? ''),
+    email: String(obj.email ?? ''),
+    role: String(obj.role ?? ''),
+    designation_id: toNumberOrNull(obj.designation_id),
+    reporting_manager_id: toNumberOrNull(obj.reporting_manager_id),
+    profile_image_document_id: toNumberOrNull(obj.profile_image_document_id),
+    profile_image_url: obj.profile_image_url ? String(obj.profile_image_url) : null,
+    children,
+  }
+}
+
+const normalizeHierarchyList = (value: unknown): UserHierarchyNode[] => {
+  if (!Array.isArray(value)) return []
+  return value.map(normalizeHierarchyNode).filter((item): item is UserHierarchyNode => item !== null)
+}
+
 export const userService = {
   async getUsers(): Promise<User[]> {
     const response = await fetch(`${API_URL}/users`, {
@@ -446,6 +485,23 @@ export const userService = {
       total: Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length,
       total_pages: Number.isFinite(rawTotalPages) && rawTotalPages >= 0 ? rawTotalPages : 0,
     }
+  },
+
+  async getHierarchy(): Promise<UserHierarchyNode[]> {
+    const response = await fetch(`${API_URL}/users/hierarchy`, {
+      method: 'GET',
+      headers: authHeaders(false),
+    })
+
+    if (handleUnauthorizedResponse(response)) {
+      throw new Error(SESSION_TIMEOUT_MESSAGE)
+    }
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response))
+    }
+
+    const data = (await response.json()) as unknown
+    return normalizeHierarchyList(data)
   },
 
   async deleteUser(id: number): Promise<void> {

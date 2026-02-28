@@ -33,6 +33,7 @@ import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import EventNoteRoundedIcon from '@mui/icons-material/EventNoteRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
+import DeviceHubRoundedIcon from '@mui/icons-material/DeviceHubRounded'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
@@ -60,6 +61,7 @@ const masterMenuChildren = [
 
 const settingsMenuChildren = [
   { label: 'Master Setting', path: '/master-setting', icon: <TuneRoundedIcon />, permission: null },
+  { label: 'Organization Structure', path: '/organization-structure', icon: <DeviceHubRoundedIcon />, permission: null },
   { label: 'Leave Master', path: '/leave-master', icon: <EventNoteRoundedIcon />, permission: null },
   { label: 'Salary Management', path: '/salary-management', icon: <PaymentsRoundedIcon />, permission: null },
 ] as const
