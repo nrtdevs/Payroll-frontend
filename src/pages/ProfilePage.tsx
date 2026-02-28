@@ -154,18 +154,11 @@ function ProfilePage() {
   }
 
   const userData = detailedUser ?? user
-  const profileRows = [
+  const personalRows = [
     { label: 'Employee ID', value: userData.id },
     { label: 'Username', value: userData.username },
+    { label: 'Name', value: userData.name },
     { label: 'Email', value: userData.email },
-    { label: 'Role', value: userData.role },
-    { label: 'Status', value: userData.status },
-    { label: 'Business ID', value: userData.business_id },
-    { label: 'Branch ID', value: userData.branch_id },
-    { label: 'Role ID', value: userData.role_id },
-    { label: 'Salary Type', value: userData.salary_type },
-    { label: 'Salary', value: userData.salary },
-    { label: 'Leave Balance', value: userData.leave_balance },
     { label: 'Mobile', value: userData.mobile },
     { label: 'Alternate Number', value: userData.number },
     { label: 'PAN', value: userData.pan },
@@ -176,6 +169,27 @@ function ProfilePage() {
     { label: 'Home Address', value: userData.home_address },
     { label: 'Created At', value: userData.created_at },
   ]
+  const employmentRows = [
+    { label: 'Role', value: userData.role },
+    { label: 'Status', value: userData.status },
+    { label: 'Business ID', value: userData.business_id },
+    { label: 'Branch ID', value: userData.branch_id },
+    { label: 'Employment Type ID', value: userData.employment_type_id },
+    { label: 'Designation ID', value: userData.designation_id },
+    { label: 'Role ID', value: userData.role_id },
+    { label: 'Salary Type', value: userData.salary_type },
+    { label: 'Salary', value: userData.salary },
+    { label: 'Leave Balance', value: userData.leave_balance },
+  ]
+  const bankAccount = detailedUser?.bank_account ?? user.bank_account ?? null
+  const bankRows = [
+    { label: 'Account Holder Name', value: bankAccount?.account_holder_name },
+    { label: 'Account Number', value: bankAccount?.account_number },
+    { label: 'IFSC Code', value: bankAccount?.ifsc_code },
+    { label: 'Bank Name', value: bankAccount?.bank_name },
+  ]
+  const educationDetails = detailedUser?.educations ?? user.educations ?? []
+  const previousCompanyDetails = detailedUser?.previous_companies ?? user.previous_companies ?? []
   const initials = (userData.name || userData.username || userData.email || 'U').trim().charAt(0).toUpperCase()
 
   const profileImageDoc = useMemo(
@@ -202,6 +216,7 @@ function ProfilePage() {
       ) ?? [],
     [detailedUser?.previous_companies],
   )
+  const leavePolicies = useMemo(() => user.leave_policies ?? [], [user.leave_policies])
 
   const onSelectFaceImage = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null
@@ -279,11 +294,11 @@ function ProfilePage() {
       <Card className="!rounded-2xl">
         <CardContent>
           <Typography variant="h6" className="!font-semibold">
-            Employee Information
+            Personal Details
           </Typography>
           <Divider className="!my-3" />
           <Grid container spacing={2}>
-            {profileRows.map((item) => (
+            {personalRows.map((item) => (
               <Grid key={item.label} size={{ xs: 12, sm: 6, md: 4 }}>
                 <div
                   className="rounded-lg p-3"
@@ -306,6 +321,198 @@ function ProfilePage() {
               </Grid>
             ))}
           </Grid>
+        </CardContent>
+      </Card>
+
+      <Card className="!rounded-2xl">
+        <CardContent>
+          <Typography variant="h6" className="!font-semibold">
+            Bank Details
+          </Typography>
+          <Divider className="!my-3" />
+          <Grid container spacing={2}>
+            {bankRows.map((item) => (
+              <Grid key={item.label} size={{ xs: 12, sm: 6, md: 4 }}>
+                <div
+                  className="rounded-lg p-3"
+                  style={{
+                    border: `1px solid ${isDark ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.36)'}`,
+                    background: isDark ? 'rgba(15, 23, 42, 0.4)' : 'rgba(248, 250, 252, 0.9)',
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    className="!uppercase !tracking-wide"
+                    sx={{ color: isDark ? 'rgba(148, 163, 184, 0.9)' : 'rgba(71, 85, 105, 0.9)' }}
+                  >
+                    {item.label}
+                  </Typography>
+                  <Typography variant="body2" className="!mt-1 !font-medium">
+                    {renderValue(item.value)}
+                  </Typography>
+                </div>
+              </Grid>
+            ))}
+          </Grid>
+        </CardContent>
+      </Card>
+
+      <Card className="!rounded-2xl">
+        <CardContent>
+          <Typography variant="h6" className="!font-semibold">
+            Employment Details
+          </Typography>
+          <Divider className="!my-3" />
+          <Grid container spacing={2}>
+            {employmentRows.map((item) => (
+              <Grid key={item.label} size={{ xs: 12, sm: 6, md: 4 }}>
+                <div
+                  className="rounded-lg p-3"
+                  style={{
+                    border: `1px solid ${isDark ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.36)'}`,
+                    background: isDark ? 'rgba(15, 23, 42, 0.4)' : 'rgba(248, 250, 252, 0.9)',
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    className="!uppercase !tracking-wide"
+                    sx={{ color: isDark ? 'rgba(148, 163, 184, 0.9)' : 'rgba(71, 85, 105, 0.9)' }}
+                  >
+                    {item.label}
+                  </Typography>
+                  <Typography variant="body2" className="!mt-1 !font-medium">
+                    {renderValue(item.value)}
+                  </Typography>
+                </div>
+              </Grid>
+            ))}
+          </Grid>
+        </CardContent>
+      </Card>
+
+      <Card className="!rounded-2xl">
+        <CardContent>
+          <Typography variant="h6" className="!font-semibold">
+            Previous Company Details
+          </Typography>
+          <Divider className="!my-3" />
+          {previousCompanyDetails.length > 0 ? (
+            <Grid container spacing={2}>
+              {previousCompanyDetails.map((company, index) => (
+                <Grid key={company.id ?? `company-${index + 1}`} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <div
+                    className="rounded-lg p-3"
+                    style={{
+                      border: `1px solid ${isDark ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.36)'}`,
+                      background: isDark ? 'rgba(15, 23, 42, 0.4)' : 'rgba(248, 250, 252, 0.9)',
+                    }}
+                  >
+                    <Typography variant="subtitle2" className="!font-semibold">
+                      Company #{index + 1}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Name: {renderValue(company.company_name)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Designation: {renderValue(company.designation)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Start Date: {renderValue(company.start_date)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      End Date: {renderValue(company.end_date)}
+                    </Typography>
+                  </div>
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No previous company records.
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="!rounded-2xl">
+        <CardContent>
+          <Typography variant="h6" className="!font-semibold">
+            Education Details
+          </Typography>
+          <Divider className="!my-3" />
+          {educationDetails.length > 0 ? (
+            <Grid container spacing={2}>
+              {educationDetails.map((education, index) => (
+                <Grid key={education.id ?? `education-${index + 1}`} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <div
+                    className="rounded-lg p-3"
+                    style={{
+                      border: `1px solid ${isDark ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.36)'}`,
+                      background: isDark ? 'rgba(15, 23, 42, 0.4)' : 'rgba(248, 250, 252, 0.9)',
+                    }}
+                  >
+                    <Typography variant="subtitle2" className="!font-semibold">
+                      Education #{index + 1}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Degree: {renderValue(education.degree)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Institution: {renderValue(education.institution)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Year Of Passing: {renderValue(education.year_of_passing)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Percentage: {renderValue(education.percentage)}
+                    </Typography>
+                  </div>
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No education records.
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="!rounded-2xl">
+        <CardContent>
+          <Typography variant="h6" className="!font-semibold">
+            Leave Details
+          </Typography>
+          <Divider className="!my-3" />
+          {leavePolicies.length > 0 ? (
+            <Grid container spacing={2}>
+              {leavePolicies.map((policy) => (
+                <Grid key={`${policy.leave_master_id}-${policy.leave_type_id}`} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <div
+                    className="rounded-lg p-3"
+                    style={{
+                      border: `1px solid ${isDark ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.36)'}`,
+                      background: isDark ? 'rgba(15, 23, 42, 0.4)' : 'rgba(248, 250, 252, 0.9)',
+                    }}
+                  >
+                    <Typography variant="subtitle2" className="!font-semibold">
+                      {policy.leave_type_name || 'Leave Type'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Total Days: {policy.total_leave_days}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Proof Required: {policy.proof_required ? 'Yes' : 'No'}
+                    </Typography>
+                  </div>
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No leave policies available.
+            </Typography>
+          )}
         </CardContent>
       </Card>
 

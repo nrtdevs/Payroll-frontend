@@ -60,7 +60,7 @@ const masterMenuChildren = [
 
 const settingsMenuChildren = [
   { label: 'Master Setting', path: '/master-setting', icon: <TuneRoundedIcon />, permission: null },
-  { label: 'Leave Management', path: '/leave-management', icon: <EventNoteRoundedIcon />, permission: null },
+  { label: 'Leave Master', path: '/leave-master', icon: <EventNoteRoundedIcon />, permission: null },
   { label: 'Salary Management', path: '/salary-management', icon: <PaymentsRoundedIcon />, permission: null },
 ] as const
 

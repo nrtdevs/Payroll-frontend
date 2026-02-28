@@ -12,6 +12,9 @@ export type User = {
   business_id?: number | null
   name?: string | null
   branch_id?: number | null
+  employment_type_id?: number | null
+  designation_id?: number | null
+  reporting_manager_id?: number | null
   role_id?: number | null
   salary_type?: string | null
   salary?: number | string | null
@@ -62,6 +65,9 @@ export type UserPreviousCompany = {
 export type UserPayload = {
   name: string
   branch_id: number | null
+  employment_type_id: number | null
+  designation_id: number | null
+  reporting_manager_id: number | null
   role_id: number | null
   salary_type: string
   salary: number | null
@@ -209,6 +215,9 @@ const normalizeUser = (value: unknown): User | null => {
     business_id: toNumberOrNull(obj.business_id),
     name: (obj.name as string | null | undefined) ?? null,
     branch_id: toNumberOrNull(obj.branch_id),
+    employment_type_id: toNumberOrNull(obj.employment_type_id),
+    designation_id: toNumberOrNull(obj.designation_id),
+    reporting_manager_id: toNumberOrNull(obj.reporting_manager_id),
     role_id: toNumberOrNull(obj.role_id),
     salary_type: (obj.salary_type as string | null | undefined) ?? null,
     salary: (obj.salary as number | string | null | undefined) ?? null,

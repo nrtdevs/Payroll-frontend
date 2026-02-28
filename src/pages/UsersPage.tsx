@@ -23,9 +23,13 @@ import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import { API_URL } from '../config/env'
 import { branchService } from '../services/branchService'
+import { designationService } from '../services/designationService'
+import { employmentTypeService } from '../services/employmentTypeService'
 import { roleService } from '../services/roleService'
 import { userService } from '../services/userService'
 import type { Branch } from '../services/branchService'
+import type { Designation } from '../services/designationService'
+import type { EmploymentType } from '../services/employmentTypeService'
 import type { Role } from '../services/roleService'
 import type { CreateUserPayload, User, UserDocument, UserListFilters, UserPayload } from '../services/userService'
 import CustomAutocomplete, { type CustomAutocompleteOption } from '../components/CustomAutocomplete'
@@ -37,6 +41,9 @@ import useToast from '../context/useToast'
 const emptyUserForm: CreateUserPayload = {
   name: '',
   branch_id: null,
+  employment_type_id: null,
+  designation_id: null,
+  reporting_manager_id: null,
   role_id: null,
   salary_type: 'MONTHLY',
   salary: null,
@@ -373,8 +380,11 @@ function UsersPage() {
   const [submittingUser, setSubmittingUser] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [branches, setBranches] = useState<Branch[]>([])
+  const [employmentTypes, setEmploymentTypes] = useState<EmploymentType[]>([])
+  const [designations, setDesignations] = useState<Designation[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loadingFormOptions, setLoadingFormOptions] = useState(false)
+  const [managerOptionsUsers, setManagerOptionsUsers] = useState<User[]>([])
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -412,6 +422,18 @@ function UsersPage() {
   const roleOptions: CustomAutocompleteOption<number>[] = roles.map((role) => ({
     label: `${role.name} (#${role.id})`,
     value: role.id,
+  }))
+  const employmentTypeOptions: CustomAutocompleteOption<number>[] = employmentTypes.map((employmentType) => ({
+    label: `${employmentType.name} (#${employmentType.id})`,
+    value: employmentType.id,
+  }))
+  const designationOptions: CustomAutocompleteOption<number>[] = designations.map((designation) => ({
+    label: `${designation.name} (#${designation.id})`,
+    value: designation.id,
+  }))
+  const reportingManagerOptions: CustomAutocompleteOption<number>[] = managerOptionsUsers.map((manager) => ({
+    label: `${manager.name || manager.username || manager.email || `User #${manager.id}`} (#${manager.id})`,
+    value: manager.id,
   }))
   const statusOptions: CustomAutocompleteOption<'ACTIVE' | 'INACTIVE'>[] = [
     { label: 'ACTIVE', value: 'ACTIVE' },
@@ -465,12 +487,51 @@ function UsersPage() {
   const loadFormOptions = async () => {
     setLoadingFormOptions(true)
     try {
-      const [branchData, roleData] = await Promise.all([branchService.getBranches(), roleService.getRoles()])
-      setBranches(branchData)
-      setRoles(roleData)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to load branch/role options.'
-      setUserError(message)
+      const [branchResult, employmentTypeResult, designationResult, roleResult] = await Promise.allSettled([
+        branchService.getBranches(),
+        employmentTypeService.getEmploymentTypes(),
+        designationService.getDesignations(),
+        roleService.getRoles(),
+      ])
+
+      const optionErrors: string[] = []
+
+      if (branchResult.status === 'fulfilled') {
+        setBranches(branchResult.value)
+      } else {
+        optionErrors.push('branches')
+      }
+
+      if (employmentTypeResult.status === 'fulfilled') {
+        setEmploymentTypes(employmentTypeResult.value)
+      } else {
+        optionErrors.push('employment types')
+      }
+
+      if (designationResult.status === 'fulfilled') {
+        setDesignations(designationResult.value)
+      } else {
+        optionErrors.push('designations')
+      }
+
+      if (roleResult.status === 'fulfilled') {
+        setRoles(roleResult.value)
+      } else {
+        optionErrors.push('roles')
+      }
+
+      try {
+        const managers = await userService.getUsers()
+        setManagerOptionsUsers(managers)
+      } catch {
+        optionErrors.push('reporting managers')
+      }
+
+      if (optionErrors.length > 0) {
+        setUserError(`Failed to load: ${optionErrors.join(', ')}. Please refresh and try again.`)
+      }
+    } catch {
+      setUserError('Failed to load form options.')
     } finally {
       setLoadingFormOptions(false)
     }
@@ -563,12 +624,26 @@ function UsersPage() {
 
   const onCreateSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (
+      userForm.branch_id === null ||
+      userForm.employment_type_id === null ||
+      userForm.designation_id === null ||
+      userForm.role_id === null
+    ) {
+      const message = 'Branch, Employment Type, Designation, and Role are required.'
+      setUserError(message)
+      showToast(message, 'error')
+      return
+    }
     setSubmittingUser(true)
     setUserError('')
     try {
       const payload: CreateUserPayload = {
         name: userForm.name,
         branch_id: userForm.branch_id,
+        employment_type_id: userForm.employment_type_id,
+        designation_id: userForm.designation_id,
+        reporting_manager_id: userForm.reporting_manager_id,
         role_id: userForm.role_id,
         salary_type: userForm.salary_type,
         salary: userForm.salary,
@@ -624,12 +699,26 @@ function UsersPage() {
   const onEditSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (editingUserId === null) return
+    if (
+      userForm.branch_id === null ||
+      userForm.employment_type_id === null ||
+      userForm.designation_id === null ||
+      userForm.role_id === null
+    ) {
+      const message = 'Branch, Employment Type, Designation, and Role are required.'
+      setUserError(message)
+      showToast(message, 'error')
+      return
+    }
     setSubmittingUser(true)
     setUserError('')
     try {
       const payload: UserPayload = {
         name: userForm.name,
         branch_id: userForm.branch_id,
+        employment_type_id: userForm.employment_type_id,
+        designation_id: userForm.designation_id,
+        reporting_manager_id: userForm.reporting_manager_id,
         role_id: userForm.role_id,
         salary_type: userForm.salary_type,
         salary: userForm.salary,
@@ -682,10 +771,14 @@ function UsersPage() {
   }
 
   const onEditUser = (user: User) => {
+    void loadFormOptions()
     setEditingUserId(user.id)
     setUserForm({
       name: user.name || '',
       branch_id: user.branch_id ?? null,
+      employment_type_id: user.employment_type_id ?? null,
+      designation_id: user.designation_id ?? null,
+      reporting_manager_id: user.reporting_manager_id ?? null,
       role_id: user.role_id ?? null,
       salary_type: user.salary_type || 'MONTHLY',
       salary: user.salary !== null && user.salary !== undefined ? Number(user.salary) : null,
@@ -894,6 +987,32 @@ function UsersPage() {
           value={userForm.branch_id}
           disabled={loadingFormOptions}
           onChange={(nextValue) => setUserForm((p) => ({ ...p, branch_id: nextValue }))}
+        />
+        <CustomAutocomplete
+          label="Employment Type"
+          required
+          requiredMessage="Employment Type is required."
+          options={employmentTypeOptions}
+          value={userForm.employment_type_id}
+          disabled={loadingFormOptions}
+          onChange={(nextValue) => setUserForm((p) => ({ ...p, employment_type_id: nextValue }))}
+        />
+        <CustomAutocomplete
+          label="Designation"
+          required
+          requiredMessage="Designation is required."
+          options={designationOptions}
+          value={userForm.designation_id}
+          disabled={loadingFormOptions}
+          onChange={(nextValue) => setUserForm((p) => ({ ...p, designation_id: nextValue }))}
+        />
+        <CustomAutocomplete
+          label="Reporting Manager"
+          options={reportingManagerOptions}
+          value={userForm.reporting_manager_id}
+          disabled={loadingFormOptions}
+          onChange={(nextValue) => setUserForm((p) => ({ ...p, reporting_manager_id: nextValue }))}
+          placeholder="Select reporting manager"
         />
         <CustomAutocomplete
           label="Role"
@@ -1327,7 +1446,14 @@ function UsersPage() {
               User List
             </Typography>
             <Stack direction="row" spacing={1}>
-              <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setCreateOpen(true)}>
+              <Button
+                variant="contained"
+                startIcon={<AddRoundedIcon />}
+                onClick={() => {
+                  void loadFormOptions()
+                  setCreateOpen(true)
+                }}
+              >
                 Create User
               </Button>
               <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void loadUsers()} disabled={loadingUsers}>
@@ -1427,7 +1553,7 @@ function UsersPage() {
         <DialogTitle>Create User</DialogTitle>
         <DialogContent>
           <Box component="form" onSubmit={onCreateSubmit} className="space-y-4 pt-1">
-            {loadingFormOptions ? <CustomLoader label="Loading branches and roles..." /> : null}
+            {loadingFormOptions ? <CustomLoader label="Loading form options..." /> : null}
             {userFormFields(true)}
             {nestedFields()}
             <Stack direction="row" justifyContent="flex-end" spacing={1}>
@@ -1446,7 +1572,7 @@ function UsersPage() {
         <DialogTitle>Update User #{editingUserId}</DialogTitle>
         <DialogContent>
           <Box component="form" onSubmit={onEditSubmit} className="space-y-4 pt-1">
-            {loadingFormOptions ? <CustomLoader label="Loading branches and roles..." /> : null}
+            {loadingFormOptions ? <CustomLoader label="Loading form options..." /> : null}
             {userFormFields(false)}
             {nestedFields()}
             <Stack direction="row" justifyContent="flex-end" spacing={1}>

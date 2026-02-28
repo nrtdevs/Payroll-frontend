@@ -64,7 +64,8 @@ function App() {
         <Route path="permission" element={<PermissionsPage />} />
         <Route path="employment-type" element={<Navigate to="/master-setting" replace />} />
         <Route path="master-setting" element={<MasterSettingPage />} />
-        <Route path="leave-management" element={<LeaveManagementPage />} />
+        <Route path="leave-master" element={<LeaveManagementPage />} />
+        <Route path="leave-management" element={<Navigate to="/leave-master" replace />} />
         <Route path="salary-management" element={<SalaryManagementPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="roles" element={<Navigate to="/role" replace />} />
@@ -82,7 +83,8 @@ function App() {
         <Route path="dashboard/employment-type" element={<Navigate to="/employment-type" replace />} />
         <Route path="dashboard/employment-types" element={<Navigate to="/employment-type" replace />} />
         <Route path="dashboard/master-setting" element={<Navigate to="/master-setting" replace />} />
-        <Route path="dashboard/leave-management" element={<Navigate to="/leave-management" replace />} />
+        <Route path="dashboard/leave-master" element={<Navigate to="/leave-master" replace />} />
+        <Route path="dashboard/leave-management" element={<Navigate to="/leave-master" replace />} />
         <Route path="dashboard/salary-management" element={<Navigate to="/salary-management" replace />} />
         <Route path="dashboard/attendance" element={<Navigate to="/attendance" replace />} />
         <Route path="dashboard/attendense" element={<Navigate to="/attendance" replace />} />
