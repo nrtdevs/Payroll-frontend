@@ -26,7 +26,6 @@ import { alpha } from '@mui/material/styles'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
-import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded'
 import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded'
@@ -57,7 +56,6 @@ const masterMenuChildren = [
   { label: 'Branches', path: '/branch', icon: <AccountTreeRoundedIcon />, permission: 'LIST_BRANCH' },
   { label: 'Roles', path: '/role', icon: <AdminPanelSettingsRoundedIcon />, permission: 'LIST_ROLE' },
   { label: 'Permissions', path: '/permission', icon: <VpnKeyRoundedIcon />, permission: 'LIST_PERMISSION' },
-  { label: 'Employment Type', path: '/employment-type', icon: <BadgeRoundedIcon />, permission: null },
 ] as const
 
 const settingsMenuChildren = [

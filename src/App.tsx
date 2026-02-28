@@ -12,7 +12,6 @@ import RolesPage from './pages/RolesPage'
 import LeaveManagementPage from './pages/LeaveManagementPage'
 import SalaryManagementPage from './pages/SalaryManagementPage'
 import MasterSettingPage from './pages/MasterSettingPage'
-import EmploymentTypesPage from './pages/EmploymentTypesPage'
 import UsersPage from './pages/UsersPage'
 
 const hasAuthToken = (): boolean => {
@@ -63,7 +62,7 @@ function App() {
         <Route path="role-edit/:roleId" element={<RoleEditPage />} />
         <Route path="user" element={<UsersPage />} />
         <Route path="permission" element={<PermissionsPage />} />
-        <Route path="employment-type" element={<EmploymentTypesPage />} />
+        <Route path="employment-type" element={<Navigate to="/master-setting" replace />} />
         <Route path="master-setting" element={<MasterSettingPage />} />
         <Route path="leave-management" element={<LeaveManagementPage />} />
         <Route path="salary-management" element={<SalaryManagementPage />} />
