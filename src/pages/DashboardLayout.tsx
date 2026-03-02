@@ -64,7 +64,7 @@ const settingsMenuChildren = [
   { label: 'Master Setting', path: '/master-setting', icon: <TuneRoundedIcon />, permission: null },
   { label: 'Organization Structure', path: '/organization-structure', icon: <DeviceHubRoundedIcon />, permission: null },
   { label: 'Leave Management', path: '/leave-management', icon: <AssignmentTurnedInRoundedIcon />, permission: null },
-  { label: 'Leave Master', path: '/leave-master', icon: <EventNoteRoundedIcon />, permission: null },
+  { label: 'Leave Master', path: '/leave-master', icon: <EventNoteRoundedIcon />, permission: 'LEAVE_MASTER_LIST' },
   { label: 'Salary Management', path: '/salary-management', icon: <PaymentsRoundedIcon />, permission: null },
 ] as const
 
