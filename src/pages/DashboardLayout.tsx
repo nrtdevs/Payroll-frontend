@@ -35,6 +35,7 @@ import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedI
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import DeviceHubRoundedIcon from '@mui/icons-material/DeviceHubRounded'
+import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
@@ -63,6 +64,7 @@ const masterMenuChildren = [
 const settingsMenuChildren = [
   { label: 'Master Setting', path: '/master-setting', icon: <TuneRoundedIcon />, permission: null },
   { label: 'Organization Structure', path: '/organization-structure', icon: <DeviceHubRoundedIcon />, permission: null },
+  { label: 'Session and Weekend Management', path: '/session', icon: <CalendarMonthRoundedIcon />, permission: null },
   { label: 'Leave Management', path: '/leave-management', icon: <AssignmentTurnedInRoundedIcon />, permission: null },
   { label: 'Leave Master', path: '/leave-master', icon: <EventNoteRoundedIcon />, permission: 'LEAVE_MASTER_LIST' },
   { label: 'Salary Management', path: '/salary-management', icon: <PaymentsRoundedIcon />, permission: null },
@@ -155,7 +157,9 @@ function DashboardLayout() {
   }, [isMasterRouteActive])
 
   useEffect(() => {
-    setSettingsOpen(isSettingsRouteActive)
+    if (isSettingsRouteActive) {
+      setSettingsOpen(true)
+    }
   }, [isSettingsRouteActive])
 
   const onLogout = async () => {

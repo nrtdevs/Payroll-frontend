@@ -14,6 +14,7 @@ import LeaveRequestManagementPage from './pages/LeaveRequestManagementPage'
 import SalaryManagementPage from './pages/SalaryManagementPage'
 import MasterSettingPage from './pages/MasterSettingPage'
 import OrganizationStructurePage from './pages/OrganizationStructurePage'
+import SessionsPage from './pages/SessionsPage'
 import UsersPage from './pages/UsersPage'
 
 const hasAuthToken = (): boolean => {
@@ -67,6 +68,8 @@ function App() {
         <Route path="employment-type" element={<Navigate to="/master-setting" replace />} />
         <Route path="master-setting" element={<MasterSettingPage />} />
         <Route path="organization-structure" element={<OrganizationStructurePage />} />
+        <Route path="session" element={<SessionsPage />} />
+        <Route path="sessions" element={<Navigate to="/session" replace />} />
         <Route path="leave-master" element={<LeaveManagementPage />} />
         <Route path="leave-management" element={<LeaveRequestManagementPage />} />
         <Route path="leave-requests" element={<Navigate to="/leave-management" replace />} />
@@ -88,6 +91,8 @@ function App() {
         <Route path="dashboard/employment-types" element={<Navigate to="/employment-type" replace />} />
         <Route path="dashboard/master-setting" element={<Navigate to="/master-setting" replace />} />
         <Route path="dashboard/organization-structure" element={<Navigate to="/organization-structure" replace />} />
+        <Route path="dashboard/session" element={<Navigate to="/session" replace />} />
+        <Route path="dashboard/sessions" element={<Navigate to="/session" replace />} />
         <Route path="dashboard/leave-master" element={<Navigate to="/leave-master" replace />} />
         <Route path="dashboard/leave-management" element={<Navigate to="/leave-management" replace />} />
         <Route path="dashboard/leave-requests" element={<Navigate to="/leave-management" replace />} />
