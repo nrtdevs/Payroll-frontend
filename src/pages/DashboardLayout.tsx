@@ -31,6 +31,7 @@ import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import EventNoteRoundedIcon from '@mui/icons-material/EventNoteRounded'
+import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded'
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
@@ -59,6 +60,7 @@ const masterMenuChildren = [
   { label: 'Branches', path: '/branch', icon: <AccountTreeRoundedIcon />, permission: 'LIST_BRANCH' },
   { label: 'Roles', path: '/role', icon: <AdminPanelSettingsRoundedIcon />, permission: 'LIST_ROLE' },
   { label: 'Permissions', path: '/permission', icon: <VpnKeyRoundedIcon />, permission: 'LIST_PERMISSION' },
+  { label: 'Holiday', path: '/holiday', icon: <EventAvailableRoundedIcon />, permission: null },
 ] as const
 
 const settingsMenuChildren = [
@@ -107,7 +109,11 @@ function DashboardLayout() {
     [permissionSet],
   )
   const canOpenMasterSetting = useMemo(
-    () => permissionSet.has('EMPLOYMENT_TYPE_LIST') || permissionSet.has('DESIGNATION_LIST') || permissionSet.has('LEAVE_TYPE_LIST'),
+    () =>
+      permissionSet.has('EMPLOYMENT_TYPE_LIST') ||
+      permissionSet.has('DESIGNATION_LIST') ||
+      permissionSet.has('LEAVE_TYPE_LIST') ||
+      permissionSet.has('HOLIDAY_TYPE_LIST'),
     [permissionSet],
   )
   const visibleSettingsChildren = useMemo(

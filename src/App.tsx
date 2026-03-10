@@ -16,6 +16,7 @@ import MasterSettingPage from './pages/MasterSettingPage'
 import OrganizationStructurePage from './pages/OrganizationStructurePage'
 import SessionsPage from './pages/SessionsPage'
 import UsersPage from './pages/UsersPage'
+import HolidaysPage from './pages/HolidaysPage'
 
 const hasAuthToken = (): boolean => {
   return Boolean(localStorage.getItem('auth_token'))
@@ -65,6 +66,7 @@ function App() {
         <Route path="role-edit/:roleId" element={<RoleEditPage />} />
         <Route path="user" element={<UsersPage />} />
         <Route path="permission" element={<PermissionsPage />} />
+        <Route path="holiday" element={<HolidaysPage />} />
         <Route path="employment-type" element={<Navigate to="/master-setting" replace />} />
         <Route path="master-setting" element={<MasterSettingPage />} />
         <Route path="organization-structure" element={<OrganizationStructurePage />} />
@@ -86,6 +88,7 @@ function App() {
         <Route path="dashboard/users" element={<Navigate to="/user" replace />} />
         <Route path="dashboard/permission" element={<Navigate to="/permission" replace />} />
         <Route path="dashboard/permissions" element={<Navigate to="/permission" replace />} />
+        <Route path="dashboard/holiday" element={<Navigate to="/holiday" replace />} />
         <Route path="employment-types" element={<Navigate to="/employment-type" replace />} />
         <Route path="dashboard/employment-type" element={<Navigate to="/employment-type" replace />} />
         <Route path="dashboard/employment-types" element={<Navigate to="/employment-type" replace />} />

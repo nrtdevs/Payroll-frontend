@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import useAuth from '../context/useAuth'
 import MasterDesignationSection from '../components/MasterDesignationSection'
 import MasterEmploymentTypeSection from '../components/MasterEmploymentTypeSection'
+import MasterHolidayTypeSection from '../components/MasterHolidayTypeSection'
 import MasterLeaveTypeSection from '../components/MasterLeaveTypeSection'
 
 function MasterSettingPage() {
@@ -23,8 +24,9 @@ function MasterSettingPage() {
   const canDeleteDesignation = permissionSet.has('DESIGNATION_DELETE')
 
   const canListLeaveType = permissionSet.has('LEAVE_TYPE_LIST')
+  const canListHolidayType = true
 
-  const hasAnySectionAccess = canListEmploymentType || canListDesignation || canListLeaveType
+  const hasAnySectionAccess = canListEmploymentType || canListDesignation || canListLeaveType || canListHolidayType
 
   return (
     <div className="space-y-4">
@@ -45,6 +47,8 @@ function MasterSettingPage() {
       ) : null}
 
       {canListLeaveType ? <MasterLeaveTypeSection /> : null}
+
+      {canListHolidayType ? <MasterHolidayTypeSection /> : null}
     </div>
   )
 }
