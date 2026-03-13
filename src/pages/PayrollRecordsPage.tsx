@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Alert, Button, Card, CardContent, MenuItem, Stack, TableCell, Typography } from '@mui/material'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import CustomInput from '../components/CustomInput'
 import CustomLoader from '../components/CustomLoader'
 import CustomTable, { type CustomTableColumn } from '../components/CustomTable'
 import { salaryService } from '../services/salaryService'
 import type { PayrollRecord } from '../types/salaryTypes'
 import { useNavigate } from 'react-router-dom'
+import PayrollDetailsDialog from '../components/salary/PayrollDetailsDialog'
 
 const monthOptions = [
   { value: 1, label: 'January' },
@@ -31,6 +33,7 @@ function PayrollRecordsPage() {
   const [error, setError] = useState('')
   const [page, setPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null)
 
   const currentYear = new Date().getFullYear()
   const [filter, setFilter] = useState({ year: currentYear, month: new Date().getMonth() + 1 })
@@ -40,7 +43,7 @@ function PayrollRecordsPage() {
       { key: 'id', label: 'ID' },
       { key: 'employee_name', label: 'Employee' },
       { key: 'year', label: 'Year' },
-      { key: 'month', label: 'Month' },
+      { key: 'month_label', label: 'Month' },
       { key: 'gross_salary', label: 'Gross Salary' },
       { key: 'total_deduction', label: 'Deductions' },
       { key: 'net_salary', label: 'Net Salary' },
@@ -142,28 +145,34 @@ function PayrollRecordsPage() {
               <TableCell>{row.id ?? '-'}</TableCell>
               <TableCell>{row.employee_name || `Employee #${row.employee_id ?? '-'}`}</TableCell>
               <TableCell>{row.year}</TableCell>
-              <TableCell>{monthOptions.find((month) => month.value === row.month)?.label || row.month}</TableCell>
+              <TableCell>{row.month_label || monthOptions.find((month) => month.value === row.month)?.label || row.month}</TableCell>
               <TableCell>{row.gross_salary?.toFixed(2) ?? '-'}</TableCell>
-              <TableCell>{row.total_deduction?.toFixed(2) ?? '-'}</TableCell>
+              <TableCell>{(row.total_deductions ?? row.total_deduction)?.toFixed(2) ?? '-'}</TableCell>
               <TableCell>{row.net_salary?.toFixed(2) ?? '-'}</TableCell>
               <TableCell>{row.status || '-'}</TableCell>
               <TableCell align="right">
-                <Button
-                  size="small"
-                  startIcon={<ReceiptLongRoundedIcon />}
-                  disabled={!row.employee_id}
-                  onClick={() =>
-                    navigate(
-                      `/admin/salary-slip?employeeId=${row.employee_id}&month=${row.year}-${String(row.month).padStart(2, '0')}`,
-                    )
-                  }
-                >
-                  Salary Slip
-                </Button>
+                <Stack direction="row" justifyContent="flex-end" spacing={1}>
+                  <Button size="small" startIcon={<VisibilityRoundedIcon />} onClick={() => setSelectedRecord(row)}>
+                    View
+                  </Button>
+                  <Button
+                    size="small"
+                    startIcon={<ReceiptLongRoundedIcon />}
+                    disabled={!row.employee_id}
+                    onClick={() =>
+                      navigate(
+                        `/admin/salary-slip?employeeId=${row.employee_id}&month=${row.year}-${String(row.month).padStart(2, '0')}`,
+                      )
+                    }
+                  >
+                    Salary Slip
+                  </Button>
+                </Stack>
               </TableCell>
             </>
           )}
         />
+        <PayrollDetailsDialog open={Boolean(selectedRecord)} record={selectedRecord} onClose={() => setSelectedRecord(null)} />
       </CardContent>
     </Card>
   )

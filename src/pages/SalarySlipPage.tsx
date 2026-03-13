@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Box, Button, Card, CardContent, Chip, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
+import { Alert, Box, Button, Card, CardContent, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
 import CustomInput from '../components/CustomInput'
 import CustomLoader from '../components/CustomLoader'
 import useToast from '../context/useToast'
@@ -67,6 +67,14 @@ function SalarySlipPage() {
     return date.toLocaleString(undefined, { month: 'long', year: 'numeric' })
   }, [month])
 
+  const totalDaysInMonth = useMemo(() => {
+    const [yearString, monthString] = month.split('-')
+    const parsedYear = Number(yearString)
+    const parsedMonth = Number(monthString)
+    if (!Number.isFinite(parsedYear) || !Number.isFinite(parsedMonth) || parsedMonth < 1 || parsedMonth > 12) return '-'
+    return String(new Date(parsedYear, parsedMonth, 0).getDate())
+  }, [month])
+
   const onViewSlip = async () => {
     if (!employeeId) {
       setError('Employee is required.')
@@ -127,6 +135,9 @@ function SalarySlipPage() {
     return <CustomLoader fullscreen label="Loading salary slip setup..." />
   }
 
+  const totalDeductions = slip ? slip.deductions.reduce((sum, item) => sum + item.amount, 0) : 0
+  const rowCount = slip ? Math.max(slip.earnings.length, slip.deductions.length) : 0
+
   return (
     <Card className="!rounded-2xl">
       <CardContent>
@@ -171,125 +182,108 @@ function SalarySlipPage() {
         ) : null}
 
         {slip ? (
-          <div className="mt-4 space-y-4">
-            <Paper variant="outlined" className="overflow-hidden !rounded-2xl">
-              <Box
-                sx={{
-                  px: { xs: 2, md: 3 },
-                  py: 2.3,
-                  background: 'linear-gradient(95deg, #0f172a 0%, #1e293b 48%, #334155 100%)',
-                  color: '#f8fafc',
-                }}
-              >
-                <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={1}>
-                  <Box>
-                    <Typography variant="h6" className="!font-bold !tracking-wide">
-                      COMPANY LTD
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: 'rgba(248,250,252,0.78)' }}>
-                      Salary Slip for {monthLabel}
-                    </Typography>
-                  </Box>
-                  <Chip label="PAID" size="small" sx={{ fontWeight: 700, bgcolor: '#16a34a', color: '#f0fdf4' }} />
-                </Stack>
-              </Box>
-
-              <Box sx={{ px: { xs: 2, md: 3 }, py: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div>
-                    <Typography variant="caption" color="text.secondary">
-                      Employee Name
-                    </Typography>
-                    <Typography variant="subtitle2" className="!font-semibold">
-                      {slip.employee_name || `Employee #${slip.employee_id}`}
-                    </Typography>
-                  </div>
-                  <div>
-                    <Typography variant="caption" color="text.secondary">
-                      Employee ID
-                    </Typography>
-                    <Typography variant="subtitle2" className="!font-semibold">
-                      {slip.employee_id}
-                    </Typography>
-                  </div>
-                  <div>
-                    <Typography variant="caption" color="text.secondary">
-                      Pay Period
-                    </Typography>
-                    <Typography variant="subtitle2" className="!font-semibold">
-                      {monthLabel}
-                    </Typography>
-                  </div>
-                </div>
-              </Box>
-
-              <Box sx={{ p: { xs: 2, md: 3 } }}>
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <Paper variant="outlined" className="!rounded-xl">
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow sx={{ '& th': { bgcolor: 'rgba(16,185,129,0.12)', fontWeight: 700 } }}>
-                          <TableCell>Earnings</TableCell>
-                          <TableCell align="right">Amount</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {slip.earnings.map((item, index) => (
-                          <TableRow key={`earning-${item.component_name}-${index}`}>
-                            <TableCell>{item.component_name}</TableCell>
-                            <TableCell align="right">{formatCurrency(item.amount)}</TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow sx={{ '& td': { fontWeight: 700, borderTop: '1px dashed', borderColor: 'divider' } }}>
-                          <TableCell>Total Earnings</TableCell>
-                          <TableCell align="right">{formatCurrency(slip.gross_salary)}</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </Paper>
-
-                  <Paper variant="outlined" className="!rounded-xl">
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow sx={{ '& th': { bgcolor: 'rgba(239,68,68,0.12)', fontWeight: 700 } }}>
-                          <TableCell>Deductions</TableCell>
-                          <TableCell align="right">Amount</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {slip.deductions.map((item, index) => (
-                          <TableRow key={`deduction-${item.component_name}-${index}`}>
-                            <TableCell>{item.component_name}</TableCell>
-                            <TableCell align="right">{formatCurrency(item.amount)}</TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow sx={{ '& td': { fontWeight: 700, borderTop: '1px dashed', borderColor: 'divider' } }}>
-                          <TableCell>Total Deductions</TableCell>
-                          <TableCell align="right">{formatCurrency(slip.gross_salary - slip.net_salary)}</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </Paper>
-                </div>
-              </Box>
-
-              <Box
-                sx={{
-                  px: { xs: 2, md: 3 },
-                  py: 2,
-                  borderTop: '1px solid',
-                  borderColor: 'divider',
-                  bgcolor: 'rgba(30,64,175,0.08)',
-                }}
-              >
-                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} gap={1}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Net Payable
-                  </Typography>
-                  <Typography variant="h6" className="!font-bold !tracking-wide">
-                    {formatCurrency(slip.net_salary)}
+          <div className="mt-4">
+            <Paper variant="outlined" className="overflow-hidden" sx={{ maxWidth: 980, mx: 'auto', borderColor: '#9ca3af' }}>
+              <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: '#fff' }}>
+                <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} gap={2}>
+                  <Stack direction="row" alignItems="center" gap={1.5}>
+                    <Box
+                      sx={{
+                        width: 68,
+                        height: 68,
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        display: 'grid',
+                        placeItems: 'center',
+                        color: '#f59e0b',
+                        fontSize: '1.7rem',
+                        fontWeight: 800,
+                        lineHeight: 1,
+                      }}
+                    >
+                      nr
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" className="!font-bold !tracking-wide">
+                        NEWRISE TECHNOSYS PVT. LTD.
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Pay Slip for the Month of {monthLabel}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    System generated document
                   </Typography>
                 </Stack>
+
+                <Box sx={{ border: '1px solid #9ca3af', mt: 2 }}>
+                  <Table size="small" sx={{ '& td, & th': { border: '1px solid #9ca3af !important' } }}>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 700 }}>Employee Name</TableCell>
+                        <TableCell>{slip.employee_name || `Employee #${slip.employee_id}`}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Employee ID</TableCell>
+                        <TableCell>{slip.employee_id}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 700 }}>Month Days</TableCell>
+                        <TableCell>{totalDaysInMonth}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Pay Period</TableCell>
+                        <TableCell>{monthLabel}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </Box>
+
+                <Box sx={{ border: '1px solid #9ca3af', borderTop: 0 }}>
+                  <Table size="small" sx={{ '& td, & th': { border: '1px solid #9ca3af !important' } }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 700, bgcolor: '#f3f4f6' }}>Earnings</TableCell>
+                        <TableCell sx={{ fontWeight: 700, bgcolor: '#f3f4f6' }} align="right">
+                          Actual (Rs.)
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700, bgcolor: '#f3f4f6' }}>Deductions</TableCell>
+                        <TableCell sx={{ fontWeight: 700, bgcolor: '#f3f4f6' }} align="right">
+                          Amount (Rs.)
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {Array.from({ length: rowCount }).map((_, index) => {
+                        const earning = slip.earnings[index]
+                        const deduction = slip.deductions[index]
+                        return (
+                          <TableRow key={`slip-row-${index}`}>
+                            <TableCell>{earning?.component_name ?? '-'}</TableCell>
+                            <TableCell align="right">{earning ? formatCurrency(earning.amount) : '-'}</TableCell>
+                            <TableCell>{deduction?.component_name ?? '-'}</TableCell>
+                            <TableCell align="right">{deduction ? formatCurrency(deduction.amount) : '-'}</TableCell>
+                          </TableRow>
+                        )
+                      })}
+
+                      <TableRow sx={{ '& td': { fontWeight: 700, bgcolor: '#f9fafb' } }}>
+                        <TableCell>Total Gross</TableCell>
+                        <TableCell align="right">{formatCurrency(slip.gross_salary)}</TableCell>
+                        <TableCell>Total Deduction</TableCell>
+                        <TableCell align="right">{formatCurrency(totalDeductions)}</TableCell>
+                      </TableRow>
+
+                      <TableRow sx={{ '& td': { fontWeight: 700, bgcolor: '#e5f3ff' } }}>
+                        <TableCell colSpan={3}>Net Pay</TableCell>
+                        <TableCell align="right">{formatCurrency(slip.net_salary)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </Box>
+
+                <Box sx={{ mt: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    This is system generated salary slip and does not require signature.
+                  </Typography>
+                </Box>
               </Box>
             </Paper>
           </div>
