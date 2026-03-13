@@ -231,6 +231,38 @@ const normalizeBreakdownList = (value: unknown): SalaryBreakdownItem[] => {
   return value.map(normalizeBreakdownItem).filter((item): item is SalaryBreakdownItem => item !== null)
 }
 
+const normalizePayrollItems = (value: unknown): { component_name: string; amount: number }[] => {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([component_name, amount]) => {
+        const parsedAmount = toNumberOrNull(amount)
+        if (parsedAmount === null) return null
+        return { component_name, amount: parsedAmount }
+      })
+      .filter((item): item is { component_name: string; amount: number } => item !== null)
+  }
+
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const record = item as Record<string, unknown>
+      const amount = toNumberOrNull(record.amount)
+      if (amount === null) return null
+      return {
+        component_name:
+          typeof record.component_name === 'string'
+            ? record.component_name
+            : typeof record.name === 'string'
+              ? record.name
+              : 'Component',
+        amount,
+      }
+    })
+    .filter((item): item is { component_name: string; amount: number } => item !== null)
+}
+
 const normalizePayrollRecord = (value: unknown): PayrollRecord | null => {
   if (!value || typeof value !== 'object') return null
   const obj = value as Record<string, unknown>
@@ -241,12 +273,30 @@ const normalizePayrollRecord = (value: unknown): PayrollRecord | null => {
   return {
     id: toNumberOrNull(obj.id) ?? undefined,
     employee_id: toNumberOrNull(obj.employee_id) ?? undefined,
-    employee_name: typeof obj.employee_name === 'string' ? obj.employee_name : undefined,
+    employee_name:
+      typeof obj.employee_name === 'string'
+        ? obj.employee_name
+        : typeof obj.employee === 'string'
+          ? obj.employee
+          : undefined,
+    month_label: typeof obj.month_label === 'string' ? obj.month_label : undefined,
     year,
     month,
+    total_days: toNumberOrNull(obj.total_days) ?? undefined,
+    weekend_days: toNumberOrNull(obj.weekend_days) ?? undefined,
+    holiday_days: toNumberOrNull(obj.holiday_days) ?? undefined,
+    working_days: toNumberOrNull(obj.working_days) ?? undefined,
+    present_days: toNumberOrNull(obj.present_days) ?? undefined,
+    leave_days: toNumberOrNull(obj.leave_days) ?? undefined,
+    absent_days: toNumberOrNull(obj.absent_days) ?? undefined,
+    per_day_salary: toNumberOrNull(obj.per_day_salary) ?? undefined,
+    absent_deduction: toNumberOrNull(obj.absent_deduction) ?? undefined,
+    earnings: normalizePayrollItems(obj.earnings),
+    deductions: normalizePayrollItems(obj.deductions),
     gross_salary: toNumberOrNull(obj.gross_salary) ?? undefined,
     net_salary: toNumberOrNull(obj.net_salary) ?? undefined,
-    total_deduction: toNumberOrNull(obj.total_deduction) ?? undefined,
+    total_deduction: toNumberOrNull(obj.total_deduction) ?? toNumberOrNull(obj.total_deductions) ?? undefined,
+    total_deductions: toNumberOrNull(obj.total_deductions) ?? toNumberOrNull(obj.total_deduction) ?? undefined,
     generated_at: typeof obj.generated_at === 'string' ? obj.generated_at : undefined,
     status: typeof obj.status === 'string' ? obj.status : undefined,
   }

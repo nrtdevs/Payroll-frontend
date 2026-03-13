@@ -90,11 +90,24 @@ export type PayrollRecord = {
   id?: number
   employee_id?: number
   employee_name?: string
+  month_label?: string
   year: number
   month: number
+  total_days?: number
+  weekend_days?: number
+  holiday_days?: number
+  working_days?: number
+  present_days?: number
+  leave_days?: number
+  absent_days?: number
+  per_day_salary?: number
+  absent_deduction?: number
+  earnings?: SalarySlipItem[]
+  deductions?: SalarySlipItem[]
   gross_salary?: number
   net_salary?: number
   total_deduction?: number
+  total_deductions?: number
   generated_at?: string
   status?: string
 }
