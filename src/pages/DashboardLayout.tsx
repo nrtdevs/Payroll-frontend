@@ -37,6 +37,7 @@ import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import DeviceHubRoundedIcon from '@mui/icons-material/DeviceHubRounded'
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded'
+import DomainRoundedIcon from '@mui/icons-material/DomainRounded'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
@@ -64,12 +65,23 @@ const masterMenuChildren = [
 ] as const
 
 const settingsMenuChildren = [
+  { label: 'Company', path: '/company', icon: <DomainRoundedIcon />, permission: null },
   { label: 'Master Setting', path: '/master-setting', icon: <TuneRoundedIcon />, permission: null },
   { label: 'Organization Structure', path: '/organization-structure', icon: <DeviceHubRoundedIcon />, permission: null },
   { label: 'Session and Weekend Management', path: '/session', icon: <CalendarMonthRoundedIcon />, permission: null },
   { label: 'Leave Management', path: '/leave-management', icon: <AssignmentTurnedInRoundedIcon />, permission: null },
   { label: 'Leave Master', path: '/leave-master', icon: <EventNoteRoundedIcon />, permission: 'LEAVE_MASTER_LIST' },
-  { label: 'Salary Management', path: '/salary-management', icon: <PaymentsRoundedIcon />, permission: null },
+] as const
+
+const salaryMenuParent = { label: 'Salary Management', path: '/salary-management', icon: <PaymentsRoundedIcon />, permission: null } as const
+
+const salaryMenuChildren = [
+  { label: 'Salary Components', path: '/admin/salary-components', icon: <PaymentsRoundedIcon />, permission: null },
+  { label: 'Salary Structures', path: '/admin/salary-structures', icon: <PaymentsRoundedIcon />, permission: null },
+  { label: 'Employee Salaries', path: '/admin/employee-salaries', icon: <PaymentsRoundedIcon />, permission: null },
+  { label: 'Payroll Generation', path: '/admin/payroll', icon: <PaymentsRoundedIcon />, permission: null },
+  { label: 'Payroll Records', path: '/admin/payroll-records', icon: <PaymentsRoundedIcon />, permission: null },
+  { label: 'Salary Slip', path: '/admin/salary-slip', icon: <PaymentsRoundedIcon />, permission: null },
 ] as const
 
 const expandedWidth = 280
@@ -90,6 +102,7 @@ function DashboardLayout() {
   const [logoutLoading, setLogoutLoading] = useState(false)
   const [masterOpen, setMasterOpen] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(true)
+  const [salaryMenuOpen, setSalaryMenuOpen] = useState(true)
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null)
 
   const userName = useMemo(
@@ -124,20 +137,36 @@ function DashboardLayout() {
       }),
     [canOpenMasterSetting, permissionSet],
   )
+  const canOpenSalaryMenu = useMemo(
+    () => salaryMenuParent.permission === null || permissionSet.has(salaryMenuParent.permission),
+    [permissionSet],
+  )
+  const visibleSalaryChildren = useMemo(
+    () => salaryMenuChildren.filter((item) => item.permission === null || permissionSet.has(item.permission)),
+    [permissionSet],
+  )
   const flatVisibleItems = useMemo(
-    () => [...visibleMenuItems, ...visibleMasterChildren, ...visibleSettingsChildren],
-    [visibleMenuItems, visibleMasterChildren, visibleSettingsChildren],
+    () => [...visibleMenuItems, ...visibleMasterChildren, ...visibleSettingsChildren, salaryMenuParent, ...visibleSalaryChildren],
+    [visibleMenuItems, visibleMasterChildren, visibleSettingsChildren, visibleSalaryChildren],
   )
   const isMasterRouteActive = useMemo(
     () => visibleMasterChildren.some((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)),
     [location.pathname, visibleMasterChildren],
   )
   const isSettingsRouteActive = useMemo(
-    () => visibleSettingsChildren.some((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)),
-    [location.pathname, visibleSettingsChildren],
+    () =>
+      visibleSettingsChildren.some((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)) ||
+      location.pathname === salaryMenuParent.path ||
+      visibleSalaryChildren.some((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)),
+    [location.pathname, visibleSettingsChildren, visibleSalaryChildren],
+  )
+  const isSalaryRouteActive = useMemo(
+    () => visibleSalaryChildren.some((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)),
+    [location.pathname, visibleSalaryChildren],
   )
   const sidebarExpanded = isDesktop ? desktopPinned || desktopHovered : true
   const sidebarWidth = isDesktop ? (sidebarExpanded ? expandedWidth : collapsedWidth) : expandedWidth
+  const mobileDrawerWidth = '86vw'
   const isDark = mode === 'dark'
   const navTextColor = isDark ? '#e2e8f0' : '#0f172a'
   const navMutedText = isDark ? '#94a3b8' : '#475569'
@@ -168,6 +197,18 @@ function DashboardLayout() {
     }
   }, [isSettingsRouteActive])
 
+  useEffect(() => {
+    if (isSalaryRouteActive) {
+      setSalaryMenuOpen(true)
+    }
+  }, [isSalaryRouteActive])
+
+  useEffect(() => {
+    if (!isDesktop) {
+      setMobileOpen(false)
+    }
+  }, [isDesktop, location.pathname, location.search])
+
   const onLogout = async () => {
     setLogoutLoading(true)
     try {
@@ -190,12 +231,25 @@ function DashboardLayout() {
     setProfileMenuAnchor(null)
   }
 
+  const handleNavigate = (path: string, reloadOnCurrent = false) => {
+    setMobileOpen(false)
+    if (reloadOnCurrent && location.pathname === path) {
+      navigate(0)
+      return
+    }
+    navigate(path)
+  }
+
   const sidebarContent = (
     <Box
-      className="h-full"
+      className="h-full flex flex-col"
       sx={{ color: navTextColor, background: sidebarGradient }}
-      onMouseEnter={() => setDesktopHovered(true)}
-      onMouseLeave={() => setDesktopHovered(false)}
+      onMouseEnter={() => {
+        if (isDesktop) setDesktopHovered(true)
+      }}
+      onMouseLeave={() => {
+        if (isDesktop) setDesktopHovered(false)
+      }}
     >
       <Stack direction="row" alignItems="center" spacing={1.2} className="px-3 pt-4 pb-3">
         <Avatar sx={{ bgcolor: theme.palette.primary.main, color: isDark ? '#06201e' : '#f8fafc', fontWeight: 800 }}>CL</Avatar>
@@ -218,21 +272,16 @@ function DashboardLayout() {
 
       <Divider sx={{ borderColor: alpha(navTextColor, 0.2) }} />
 
-      <List className="app-scrollbar px-2 py-3">
+      <List className="app-scrollbar px-2 py-3" sx={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {visibleMenuItems.map((item) => {
           const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
           return (
             <ListItemButton
               key={item.path}
               onClick={() => {
-                setMobileOpen(false)
                 setMasterOpen(false)
                 setSettingsOpen(false)
-                if (item.path === '/dashboard' && location.pathname === '/dashboard') {
-                  navigate(0)
-                  return
-                }
-                navigate(item.path)
+                handleNavigate(item.path, item.path === '/dashboard')
               }}
               className="!mb-1 !rounded-xl"
               sx={{
@@ -282,8 +331,7 @@ function DashboardLayout() {
                     <ListItemButton
                       key={item.path}
                       onClick={() => {
-                        setMobileOpen(false)
-                        navigate(item.path)
+                        handleNavigate(item.path)
                       }}
                       className="!mb-1 !ml-4 !rounded-xl"
                       sx={{
@@ -306,7 +354,7 @@ function DashboardLayout() {
           </>
         ) : null}
 
-        {visibleSettingsChildren.length > 0 ? (
+        {visibleSettingsChildren.length > 0 || canOpenSalaryMenu ? (
           <>
             <ListItemButton
               onClick={() => setSettingsOpen((prev) => !prev)}
@@ -335,8 +383,7 @@ function DashboardLayout() {
                     <ListItemButton
                       key={item.path}
                       onClick={() => {
-                        setMobileOpen(false)
-                        navigate(item.path)
+                        handleNavigate(item.path)
                       }}
                       className="!mb-1 !ml-4 !rounded-xl"
                       sx={{
@@ -354,6 +401,64 @@ function DashboardLayout() {
                     </ListItemButton>
                   )
                 })}
+
+                {canOpenSalaryMenu ? (
+                  <>
+                    <ListItemButton
+                      onClick={() => {
+                        setSalaryMenuOpen((prev) => !prev)
+                        setMobileOpen(false)
+                      }}
+                      className="!mb-1 !ml-4 !rounded-xl"
+                      sx={{
+                        bgcolor: isSalaryRouteActive ? navActiveBg : 'transparent',
+                        '&:hover': { bgcolor: isSalaryRouteActive ? navActiveBg : navHoverBg },
+                      }}
+                    >
+                      <ListItemIcon className="!min-w-10" sx={{ color: isSalaryRouteActive ? navActiveText : navIconColor }}>
+                        {salaryMenuParent.icon}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={salaryMenuParent.label}
+                        primaryTypographyProps={{
+                          fontSize: 13,
+                          fontWeight: isSalaryRouteActive ? 700 : 500,
+                          color: isSalaryRouteActive ? navActiveText : navTextColor,
+                        }}
+                      />
+                      {salaryMenuOpen ? <ExpandLessRoundedIcon sx={{ color: navIconColor }} /> : <ExpandMoreRoundedIcon sx={{ color: navIconColor }} />}
+                    </ListItemButton>
+
+                    <Collapse in={salaryMenuOpen} timeout="auto" unmountOnExit>
+                      <List disablePadding>
+                        {visibleSalaryChildren.map((item) => {
+                          const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+                          return (
+                            <ListItemButton
+                              key={item.path}
+                              onClick={() => {
+                                handleNavigate(item.path)
+                              }}
+                              className="!mb-1 !ml-8 !rounded-xl"
+                              sx={{
+                                bgcolor: active ? navActiveBg : 'transparent',
+                                '&:hover': { bgcolor: active ? navActiveBg : navHoverBg },
+                              }}
+                            >
+                              <ListItemIcon className="!min-w-10" sx={{ color: active ? navActiveText : navIconColor }}>
+                                {item.icon}
+                              </ListItemIcon>
+                              <ListItemText
+                                primary={item.label}
+                                primaryTypographyProps={{ fontSize: 12.5, fontWeight: active ? 700 : 500, color: active ? navActiveText : navTextColor }}
+                              />
+                            </ListItemButton>
+                          )
+                        })}
+                      </List>
+                    </Collapse>
+                  </>
+                ) : null}
               </List>
             </Collapse>
           </>
@@ -383,7 +488,13 @@ function DashboardLayout() {
           onClose={() => setMobileOpen(false)}
           variant="temporary"
           ModalProps={{ keepMounted: true }}
-          PaperProps={{ sx: { width: expandedWidth } }}
+          PaperProps={{
+            sx: {
+              width: mobileDrawerWidth,
+              maxWidth: expandedWidth,
+              borderRight: `1px solid ${theme.palette.divider}`,
+            },
+          }}
         >
           {sidebarContent}
         </Drawer>

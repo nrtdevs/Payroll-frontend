@@ -12,11 +12,19 @@ import RolesPage from './pages/RolesPage'
 import LeaveManagementPage from './pages/LeaveManagementPage'
 import LeaveRequestManagementPage from './pages/LeaveRequestManagementPage'
 import SalaryManagementPage from './pages/SalaryManagementPage'
+import SalaryComponentsPage from './pages/SalaryComponentsPage'
+import SalaryStructuresPage from './pages/SalaryStructuresPage'
+import EmployeeSalariesPage from './pages/EmployeeSalariesPage'
+import SalaryBreakdownPage from './pages/SalaryBreakdownPage'
+import PayrollPage from './pages/PayrollPage'
+import PayrollRecordsPage from './pages/PayrollRecordsPage'
+import SalarySlipPage from './pages/SalarySlipPage'
 import MasterSettingPage from './pages/MasterSettingPage'
 import OrganizationStructurePage from './pages/OrganizationStructurePage'
 import SessionsPage from './pages/SessionsPage'
 import UsersPage from './pages/UsersPage'
 import HolidaysPage from './pages/HolidaysPage'
+import CompanyPage from './pages/CompanyPage'
 
 const hasAuthToken = (): boolean => {
   return Boolean(localStorage.getItem('auth_token'))
@@ -67,6 +75,7 @@ function App() {
         <Route path="user" element={<UsersPage />} />
         <Route path="permission" element={<PermissionsPage />} />
         <Route path="holiday" element={<HolidaysPage />} />
+        <Route path="company" element={<CompanyPage />} />
         <Route path="employment-type" element={<Navigate to="/master-setting" replace />} />
         <Route path="master-setting" element={<MasterSettingPage />} />
         <Route path="organization-structure" element={<OrganizationStructurePage />} />
@@ -76,6 +85,13 @@ function App() {
         <Route path="leave-management" element={<LeaveRequestManagementPage />} />
         <Route path="leave-requests" element={<Navigate to="/leave-management" replace />} />
         <Route path="salary-management" element={<SalaryManagementPage />} />
+        <Route path="admin/salary-components" element={<SalaryComponentsPage />} />
+        <Route path="admin/salary-structures" element={<SalaryStructuresPage />} />
+        <Route path="admin/employee-salaries" element={<EmployeeSalariesPage />} />
+        <Route path="admin/employee-salaries/:employeeId" element={<SalaryBreakdownPage />} />
+        <Route path="admin/payroll" element={<PayrollPage />} />
+        <Route path="admin/payroll-records" element={<PayrollRecordsPage />} />
+        <Route path="admin/salary-slip" element={<SalarySlipPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="roles" element={<Navigate to="/role" replace />} />
         <Route path="users" element={<Navigate to="/user" replace />} />
@@ -89,6 +105,7 @@ function App() {
         <Route path="dashboard/permission" element={<Navigate to="/permission" replace />} />
         <Route path="dashboard/permissions" element={<Navigate to="/permission" replace />} />
         <Route path="dashboard/holiday" element={<Navigate to="/holiday" replace />} />
+        <Route path="dashboard/company" element={<Navigate to="/company" replace />} />
         <Route path="employment-types" element={<Navigate to="/employment-type" replace />} />
         <Route path="dashboard/employment-type" element={<Navigate to="/employment-type" replace />} />
         <Route path="dashboard/employment-types" element={<Navigate to="/employment-type" replace />} />
@@ -100,6 +117,13 @@ function App() {
         <Route path="dashboard/leave-management" element={<Navigate to="/leave-management" replace />} />
         <Route path="dashboard/leave-requests" element={<Navigate to="/leave-management" replace />} />
         <Route path="dashboard/salary-management" element={<Navigate to="/salary-management" replace />} />
+        <Route path="dashboard/admin/salary-components" element={<Navigate to="/admin/salary-components" replace />} />
+        <Route path="dashboard/admin/salary-structures" element={<Navigate to="/admin/salary-structures" replace />} />
+        <Route path="dashboard/admin/employee-salaries" element={<Navigate to="/admin/employee-salaries" replace />} />
+        <Route path="dashboard/admin/employee-salaries/:employeeId" element={<Navigate to="/admin/employee-salaries" replace />} />
+        <Route path="dashboard/admin/payroll" element={<Navigate to="/admin/payroll" replace />} />
+        <Route path="dashboard/admin/payroll-records" element={<Navigate to="/admin/payroll-records" replace />} />
+        <Route path="dashboard/admin/salary-slip" element={<Navigate to="/admin/salary-slip" replace />} />
         <Route path="dashboard/attendance" element={<Navigate to="/attendance" replace />} />
         <Route path="dashboard/attendense" element={<Navigate to="/attendance" replace />} />
         <Route index element={<Navigate to="/dashboard" replace />} />
